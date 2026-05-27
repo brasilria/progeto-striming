@@ -1,0 +1,1319 @@
+/* ══════════════════════════════════════════════════════════════
+   MÓDULO RESPONSIVO - ADAPTAÇÃO COMPLETA PARA DISPOSITIVOS MÓVEIS
+   ══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+    
+    /* 1. Ajustes Gerais de Espaçamento Corporal */
+    body {
+        padding: 10px;
+    }
+
+    /* 2. Barra de Navegação (Navbar) adaptada para Celular */
+    .navbar, .navbar-online {
+        flex-direction: column !important;
+        gap: 12px !important;
+        text-align: center !important;
+        padding: 15px 10px !important;
+    }
+
+    .nav-links {
+        flex-direction: column !important;
+        width: 100% !important;
+        gap: 10px !important;
+    }
+
+    .nav-links a, .btn-comunidade, .btn-adicionar {
+        width: 100% !important;
+        display: block !important;
+        box-sizing: border-box;
+        padding: 12px !important; /* Área de toque maior para o dedo */
+        text-align: center !important;
+    }
+
+    /* 3. Grades de Vídeo (Home e Comunidade) Inteligentes */
+    /* Em telas pequenas, força a exibição de no máximo 2 colunas para as capas não sumirem */
+    .grid-videos, .cm-grid {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
+        gap: 15px !important;
+        padding: 10px !important;
+    }
+
+    /* 4. Ajustes nos Cartões de Vídeo (Cards) */
+    .card-video, .cm-card {
+        border-radius: 6px !important;
+    }
+
+    .capa-wrapper, .cm-capa-wrapper {
+        height: 110px !important; /* Altura proporcional para telas menores */
+    }
+
+    .video-info, .cm-card-info {
+        padding: 8px !important;
+    }
+
+    .video-titulo, .cm-video-titulo {
+        font-size: 14px !important; /* Legível no celular */
+        line-height: 1.2;
+    }
+
+    /* 5. Modais de Envio de Link / Upload */
+    /* Garante que o modal ocupe quase toda a tela do celular sem cortar as bordas */
+    .modal-content {
+        width: 92% !important;
+        padding: 15px !important;
+        margin: 10% auto !important;
+    }
+
+    .modal-content input, 
+    .modal-content textarea, 
+    .modal-content button {
+        font-size: 16px !important; /* Evita o zoom automático chato do iOS Safari */
+        padding: 12px !important;
+    }
+}
+
+:root {
+    /* Mude aqui para #1a98ff se quiser azul, ou #b81d24 para um vermelho vinho */
+    --cor-principal: #e50914; 
+    --cor-fundo: #141414;
+    --cor-texto: #ffffff;
+    --cor-hover: #ff0000;
+    --transicao: 0.3s ease-in-out;
+}
+
+.capa-container {
+    position: relative;
+    overflow: hidden; /* Mantém tudo dentro dos limites da capa */
+}
+
+.logo-site-pequena {
+    color: #e50914; /* O vermelho clássico da Netflix */
+    margin: 0;
+    font-size: 1.5rem; /* Ajuste o tamanho como preferir */
+    font-weight: 900;
+    
+    /* --- LINHA ADICIONADA (CORREÇÃO CIRÚRGICA) --- */
+    /* Garante que o logo tenha a mesma fonte moderna do resto do site */
+    font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+/* Adicione isso dentro da tag <style> do seu HTML */
+.video-wrapper {
+    min-height: 400px; /* Evita que a página fique "achatada" enquanto carrega */
+    display: flex;
+    justify-content: center;
+    background: #000;
+}
+
+/* Força o widget a respeitar a largura do container */
+.telegram-post {
+    width: 100% !important;
+}
+
+/* Esconde o texto mas mantém acessível (visual 'câmera') */
+.texto-capa {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+}
+
+.video-container {
+    width: 100vw;       /* Largura total da janela */
+    height: 100vh;      /* Altura total da janela */
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+/* O vídeo deve tentar preencher o máximo possível */
+/* A moldura agora vai ocupar a tela inteira e travar tudo no centro */
+.video-wrapper {
+    width: 100vw;               /* Largura total da janela */
+    height: 100vh;              /* Altura total da janela (IMPEDE de ficar grudado no topo) */
+    background-color: #000000;  /* Fundo totalmente preto */
+    
+    /* Sistema de alinhamento militar: centraliza o que estiver dentro */
+    display: flex;
+    justify-content: center;    /* Centraliza na horizontal (esquerda/direita) */
+    align-items: center;        /* Centraliza na vertical (topo/baixo) */
+    
+    position: relative;         /* Necessário para os seus botões customizados ficarem por cima */
+    overflow: hidden;
+}
+
+/* O vídeo agora vai crescer até o limite máximo da tela sem perder a proporção */
+#meuVideo {
+    width: 100%;
+    height: 100%;
+    max-width: 100vw;
+    max-height: 100vh;
+    
+    /* Mantém o formato original (cinema ou vertical) com barras pretas perfeitas */
+    object-fit: contain; 
+}
+
+/* Estilo do botão (label) com o ícone da câmera */
+.btn-trocar-capa {
+    position: absolute;
+    bottom: 10px; /* Posição no canto inferior */
+    right: 10px;  /* Posição no canto direito */
+    
+    /* Círculo vermelho/transparente */
+    background-color: rgba(229, 9, 20, 0.7); /* Pobreflix Red com transparência */
+    color: white;
+    
+    width: 38px;
+    height: 38px;
+    border-radius: 50%; /* Faz o botão redondo */
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    cursor: pointer;
+    transition: all 0.3s ease;
+    
+    /* Efeito de sobreposição (z-index) */
+    z-index: 5; 
+    
+    /* Sombra para destaque */
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    
+    /* Estado inicial: escondido (opcional, dependendo se você quer hover) */
+    opacity: 0;
+    transform: scale(0.8);
+}
+
+/* Mostra o botão ao passar o mouse sobre o contêiner da capa */
+.capa-container:hover .btn-trocar-capa {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* Estilo para o ícone (SVG) dentro do botão */
+.btn-trocar-capa svg {
+    width: 20px;
+    height: 20px;
+    fill: currentColor; /* Usa a cor do texto do label (white) */
+}
+
+.btn-acao {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    font-size: 35px;
+    width: 75px;
+    height: 75px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-acao:hover {
+    background: var(--cor-principal);
+    transform: scale(1.1);
+    box-shadow: 0 0 25px var(--cor-principal);
+    border: 1px solid transparent;
+}
+
+.barra-progresso::after {
+    content: '';
+    position: absolute;
+    right: -5px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 12px;
+    height: 12px;
+    background: white;
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.barra-container:hover .barra-progresso::after {
+    opacity: 1;
+}
+
+.btn-mais, .btn-assistir, .btn-play-ep {
+    background-color: var(--cor-principal);
+    transition: var(--transicao);
+}
+
+.btn-mais:hover {
+    background-color: var(--cor-hover);
+    transform: scale(1.1);
+}
+
+.voltar-link {
+    color: var(--cor-principal);
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #141414; /* Preto Netflix */
+    color: #ffffff;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    overflow-x: hidden; /* Evita barra de rolagem horizontal */
+}
+
+/* 2. HEADER (BOTÃO DE ADICIONAR) */
+header {
+    position: absolute; /* Deixa o header flutuando sobre o banner */
+    top: 0;
+    width: 100%;
+    display: flex;
+    justify-content: flex-end; /* Botão no canto direito */
+    padding: 20px 5%;
+    z-index: 100; /* Sempre no topo */
+    box-sizing: border-box;
+}
+
+.btn-mais {
+    background-color: #e70000;
+    color: rgb(255, 255, 255);
+    border: none;
+    font-size: 24px;
+    padding: 5px 20px;
+    cursor: pointer;
+    border-radius: 5px;
+    font-weight: bold;
+}
+
+.btn-adicionar {
+    display: flex; /* Cria um container flexível */
+    align-items: center; /* Centraliza verticalmente */
+    justify-content: center; /* Centraliza horizontalmente */
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    padding: 0; /* Remove paddings que podem empurrar a cruz */
+    line-height: 0; /* Garante que a altura da linha não desloque o texto */
+}
+
+/* 3. BANNER DE DESTAQUE (HERO) */
+.banner-netflix {
+    height: 80vh; /* Ocupa 80% da tela */
+    position: relative;
+    overflow: hidden;
+    background-color: #000;
+}
+
+.slide-item {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    display: flex;
+    align-items: center; /* Centraliza o texto verticalmente no banner */
+    padding: 0 5%;
+    opacity: 0;
+    transform: translateX(-100%);
+    transition: opacity 1s ease, transform 1.2s ease-in-out;
+    box-sizing: border-box;
+}
+
+/* Efeito de degradê no banner para fundir com o fundo */
+.slide-item::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 30%;
+    background: linear-gradient(to top, #141414, transparent);
+}
+
+.slide-item.ativo { opacity: 1; transform: translateX(0); z-index: 1; }
+.slide-item.saindo { opacity: 0; transform: translateX(100%); }
+
+.banner-info {
+    max-width: 600px;
+    z-index: 2;
+    color: white;
+    text-shadow: 2px 2px 10px rgba(0,0,0,0.9);
+}
+
+.logo-site { color: #E50914; font-size: 3.5rem; margin: 0 0 10px 0; font-weight: 900; }
+.titulo-destaque { font-size: 2.5rem; margin: 0 0 10px 0; }
+.desc-destaque { font-size: 1.2rem; margin-bottom: 25px; color: #e5e5e5; }
+
+.btn-assistir {
+    background: white;
+    color: black;
+    padding: 12px 30px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: bold;
+    margin-right: 10px;
+    font-size: 1.1rem;
+}
+
+/* 4. GRADE DE CONTEÚDO (CARDS) */
+main {
+    position: relative;
+    margin-top: -120px; /* Faz os cards subirem um pouco sobre o banner */
+    padding: 0 5% 50px 5%;
+    z-index: 10;
+}
+
+.grade-series {
+    display: grid;
+    /* Define colunas que se ajustam sozinhas, mantendo um tamanho mínimo */
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); 
+    gap: 5px;
+    padding: 20px;
+}
+
+.capa-container {
+    position: relative;
+    width: 100%;
+    /* Define uma altura fixa para manter a proporção (ex: 300px ou 15vw) */
+    height: 160px; 
+    width: 200px;
+    overflow: hidden;
+    border-radius: 8px;
+    background-color: #222; /* Fundo escuro caso a imagem demore a carregar */
+}
+
+.capa-img {
+    width: 100%;
+    height: 100%;
+    /* MÁGICA AQUI: corta a imagem para preencher o espaço sem distorcer */
+    object-fit: cover; 
+    object-position: center;
+    display: block;
+    transition: transform 1.9s ease;
+}
+
+.bloco-serie {
+    background: transparent;
+    padding: 10px; /* Espaço para a aura respirar */
+    border-radius: 12px;
+    transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1); /* Animação suave */
+    position: relative;
+    z-index: 1;
+    overflow: hidden; /* Garante que nada saia do card */
+}
+
+/* O Efeito de Aura e Destaque no Hover */
+.bloco-serie:hover {
+    transform: translateY(-10px) scale(1.02); /* Sobe um pouco e cresce levemente */
+    background: #1a1a1a; /* Escurece o fundo do card para destacar */
+    z-index: 10; /* Fica acima dos outros cards */
+    
+    /* A MÁGICA: Aura Vermelha (Box Shadow) */
+    box-shadow: 0 0 25px rgba(229, 9, 20, 0.7), /* Brilho Principal */
+                0 0 10px rgba(229, 9, 20, 0.4); /* Brilho Suave ao redor */
+}
+
+/* Ajuste na Imagem para acompanhar o efeito */
+.capa-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Mantém a proporção e corta o excesso */
+    border-radius: 8px; /* Borda arredondada interna */
+    transition: transform 0.4s ease;
+}
+
+/* Leve zoom na imagem dentro da aura */
+.bloco-serie:hover .capa-img {
+    transform: scale(1.05);
+}
+
+/* Mantém os botões (lixeira e trocar capa) visíveis e funcionais */
+.bloco-serie:hover .btn-deletar-card,
+.bloco-serie:hover .form-trocar-capa {
+    opacity: 1;
+}
+
+/* Posicionamento da Lixeira sobre a capa */
+.capa-container {
+    position: relative; /* Pai relativo para o botão ser absoluto */
+}
+
+.btn-deletar-card {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(229, 9, 20, 0.9); /* Vermelho forte */
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    z-index: 50; /* Garante que fique acima de tudo */
+    opacity: 0;
+    transition: opacity 0.3s ease, transform 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+}
+
+.bloco-serie:hover .btn-deletar-card {
+    opacity: 1;
+}
+
+.btn-deletar-card:hover {
+    transform: scale(1.2);
+    background: #ff0000;
+}
+
+/* CORREÇÃO DO PLAYER (Imagem 1) */
+.video-playing {
+    padding: 0 !important;
+    margin: 0 !important;
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+}
+
+/* Esconde textos que empurram o vídeo para baixo */
+.video-playing h1, 
+.video-playing .info-extra {
+    display: none;
+}
+
+/* RESOLUÇÃO LIXEIRA: Posicionamento sobre a capa */
+.btn-deletar-card {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(229, 9, 20, 0.85); /* Vermelho Netflix */
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    z-index: 20; /* Fica acima de tudo na capa */
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: bold;
+}
+
+/* Faz a lixeira aparecer no hover do card */
+.bloco-serie:hover .btn-deletar-card {
+    opacity: 1;
+}
+
+.capa-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.info { padding: 15px; }
+.info h3 { margin: 0; font-size: 1.1rem; }
+.info p { font-size: 0.9rem; color: #a3a3a3; margin: 8px 0; }
+.btn-ver {
+    display: block;
+    background: #e50914;
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+    text-align: center;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.video-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(229, 9, 20, 0.2);
+}
+
+.thumbnail::after {
+    content: "ASSISTIR";
+    position: absolute;
+    bottom: 10px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    opacity: 0.5;
+}
+
+/* 5. MODAL E OUTROS */
+/* MODAL COM TEXTURA MODERNA */
+.modal { 
+    display: none; 
+    position: fixed; 
+    z-index: 2000; 
+    left: 0; top: 0; 
+    width: 100%; height: 100%; 
+    background-color: rgba(0,0,0,0.85);
+    backdrop-filter: blur(5px);
+}
+
+.modal-conteudo { 
+    background-color: #181818; 
+    margin: 10% auto; 
+    padding: 30px; 
+    width: 90%; 
+    max-width: 450px; 
+    border-radius: 12px;
+    border: 1px solid #333;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.modal-conteudo h2 {
+    margin-top: 0;
+    color: var(--cor-principal);
+    font-size: 1.5rem;
+}
+
+.modal-conteudo input, .modal-conteudo textarea {
+    width: 100%;
+    padding: 12px;
+    margin: 10px 0;
+    background: #2b2b2b;
+    border: 1px solid #444;
+    border-radius: 6px;
+    color: white;
+    font-size: 1rem;
+    box-sizing: border-box; /* Garante que não passe da borda */
+}
+
+.modal-conteudo button[type="submit"] {
+    background-color: var(--cor-principal);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.btn-trocar {
+    position: absolute;
+    top: 5px; right: 5px;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    padding: 8px;
+    border-radius: 50%;
+    cursor: pointer;
+    opacity: 0;
+    transition: 0.3s;
+}
+
+.bloco-serie:hover .btn-trocar { opacity: 1; }
+
+.body-player {
+    background: #000;
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+.btn-deletar {
+    color: #888282;
+    text-decoration: none;
+    font-size: 0.8rem;
+    margin-left: 15px;
+    transition: color 0.2s;
+}
+
+.btn-deletar:hover {
+    color: #e50914;
+    text-decoration: underline;
+}
+
+/* Isso vai alinhar os botões lado a lado no centro do player */
+.botoes-controle {
+    display: flex !important;
+    flex-direction: row !important; /* Coloca Play entre Voltar e Avançar */
+    align-items: center;
+    justify-content: center;
+    gap: 40px; /* Espaço entre os botões */
+    
+    /* Posicionamento no meio inferior */
+    position: absolute;
+    bottom: 10%; /* Sobe um pouco do fundo da tela */
+    left: 50%;
+    transform: translateX(-50%); /* Centraliza perfeitamente */
+    
+    width: auto;
+    z-index: 1000; /* Garante que fique na frente do vídeo e do overlay */
+    pointer-events: auto; /* Garante que o clique funcione */
+}
+
+/* Garante que os botões dentro do container apareçam */
+.btn-acao {
+    cursor: pointer;
+    background: none;
+    border: none;
+    color: white; /* Ou a cor da sua textura */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+}
+
+.btn-acao:hover {
+    transform: scale(1.2);
+}
+
+.video-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    cursor: none;
+    body, .player-container, video {
+    cursor: default !important;
+}
+
+/* Garante que em cima dos botões o mouse vire a "mãozinha" de clique */
+button, .botao-controle, input, a {
+    cursor: pointer !important;
+}
+}
+
+.video-container.show-controls {
+    cursor: default;
+}
+
+/* CONTAINER PRINCIPAL DO CARROSSEL */
+#carrossel-container {
+    position: relative;
+    width: 100%;
+    height: 80vh; /* Ajuste conforme sua necessidade */
+    overflow: hidden; /* IMPORTANTE: Esconde a imagem quando ela está fora da tela */
+    background-color: #141414; /* Cor de fundo para o Pobreflix */
+}
+
+/* CADA SLIDE INDIVIDUAL */
+/* CONTAINER PRINCIPAL DO BANNER */
+.banner-netflix {
+    position: relative;
+    width: 100%;
+    height: 80vh; /* Ajuste conforme necessário */
+    overflow: hidden; /* IMPORTANTE: Esconde imagens fora da tela */
+    background-color: #141414; /* Pobreflix Theme */
+}
+
+/* CONTAINER DO CARROSSEL DENTRO DO BANNER */
+#carrossel-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+/* CADA SLIDE INDIVIDUAL */
+.slide-item {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    
+    /* Estado inicial: invisível e fora da tela à esquerda */
+    opacity: 0;
+    transform: translateX(-100%);
+    z-index: 1; /* Camada mais baixa */
+    
+    /* Transições suaves para opacidade e movimento de slides */
+    /* USAMOS TRANSITION AO INVÉS DE ANIMATION PARA O CROSS-FADE */
+    transition: opacity 1.2s ease-in-out, transform 1.2s ease-in-out;
+}
+
+/* O SLIDE QUE CHEGOU E ESTÁ ATIVO AGORA */
+.slide-item.ativo {
+    opacity: 1; /* Fica visível */
+    transform: translateX(0%); /* Para no centro */
+    z-index: 2; /* Fica na camada da frente, cobrindo */
+}
+
+/* O SLIDE QUE ACABOU DE SAIR (Para evitar o buraco preto) */
+.slide-item.saindo {
+    opacity: 0; /* Desaparece suavemente */
+    transform: translateX(100%); /* Desliza suavemente para a direita */
+    z-index: 1; /* Baixa para o fundo enquanto o novo chega */
+}
+
+/* Garante que o texto e botões fiquem acima das imagens */
+.banner-info {
+    position: relative;
+    z-index: 10;
+    /* ... resto dos seus estilos ... */
+}
+
+/* Garante que o texto e os botões fiquem acima da imagem */
+.banner-info {
+    position: relative;
+    z-index: 10;
+}
+
+#meuVideo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/* Interface de Controles */
+.controles-custom {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 999; /* Fica acima do vídeo e do overlay de clique */
+    pointer-events: none; /* Deixa o clique passar para o vídeo... */
+}
+
+.botoes-controle {
+    pointer-events: auto; /* ...mas os botões dentro dela voltam a aceitar clique */
+}
+
+.video-container.video-playing {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background: #000;
+}
+
+/* Esconde títulos desnecessários durante a reprodução */
+.video-playing h1, .video-playing .info-extra {
+    display: none;
+}
+
+/* Barra de Progresso Estilo Netflix */
+.barra-progresso {
+    width: 100%;
+    height: 5px;
+    background: rgba(255,255,255,0.3);
+    margin-bottom: 15px;
+    cursor: pointer;
+}
+
+.progresso-cheio {
+    height: 100%;
+    background: #e50914; /* O seu vermelho ;) */
+    width: 0%;
+}
+
+/* CONTAINER CENTRALIZADO */
+.botoes-controle {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center;
+    justify-content: center;
+    gap: 40px; 
+    position: absolute;
+    bottom: 12%; 
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    pointer-events: auto;
+}
+
+/* BOTÕES CLÁSSICOS COM TEXTURA */
+.btn-acao {
+    background: rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    font-size: 25px; /* Tamanho dos ícones */
+}
+
+/* BOTÃO DE PLAY (DO MEIO) MAIOR */
+.btn-central {
+    width: 90px !important;
+    height: 90px !important;
+    font-size: 40px !important;
+    background: rgba(255, 255, 255, 0.15) !important;
+}
+
+.btn-acao:hover {
+    background: var(--cor-principal) !important;
+    transform: scale(1.1);
+    box-shadow: 0 0 20px var(--cor-principal);
+    border-color: transparent !important;
+}
+
+/* REMOVE OS FANTASMAS (IMPORTANTE!) */
+/* Se houver algum ::after criando ícones extras, isso aqui mata eles */
+.btn-acao::after, .btn-acao::before {
+    content: none !important;
+}
+
+/* Container que segura o vídeo e a interface */
+.video-container {
+    background-color: #000;
+    cursor: none; /* Esconde o mouse para imersão total */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Quando o usuário mexe o mouse, ele volta a aparecer */
+.video-container.active {
+    cursor: default;
+}
+
+.video-playing #playPause::after {
+    content: '||';
+    font-size: 28px;
+    color: white;
+}
+
+/* Quando o vídeo está pausado */
+.video-paused #playPause::after {
+    content: '▶';
+    font-size: 32px;
+    color: white;
+    margin-left: 5px; /* Ajuste fino para o triângulo parecer centrado */
+}
+
+/* Garante que os botões de 10s não recebam esses ícones extras */
+#rewind::after, #forward::after {
+    content: none !important;
+}
+
+/* Estilo dos Botões de Ação (Play, Voltar, Avançar) */
+.btn-acao {
+    background: rgba(255, 255, 255, 0.1); /* Fundo levemente visível */
+    border: none;
+    color: white;
+    font-size: 35px;
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(5px); /* Efeito de vidro fosco moderno */
+}
+
+.btn-acao:hover {
+    background: var(--cor-principal); /* O seu vermelho */
+    transform: scale(1.15);
+    box-shadow: 0 0 20px var(--cor-principal);
+}
+
+/* Barra de Progresso Estilo Youtube/Netflix */
+.barra-container {
+    width: 96%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    margin: 0 auto 20px;
+    border-radius: 10px;
+    cursor: pointer;
+    overflow: hidden;
+    transition: height 0.2s;
+}
+
+/* A barra cresce um pouco quando você passa o mouse nela */
+.barra-container:hover {
+    height: 10px;
+}
+
+.barra-progresso {
+    height: 100%;
+    background: linear-gradient(to right, #ff0000, var(--cor-principal));
+    width: 0%;
+    border-radius: 10px;
+    position: relative;
+}
+
+/* Camada de Gradiente no fundo para os controles não sumirem no branco */
+.controles-overlay {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    padding: 60px 0 30px;
+    background: linear-gradient(to top, rgba(0,0,0,0.9) 20%, transparent);
+    pointer-events: none; /* Evita que o gradiente bloqueie o clique no vídeo */
+}
+
+/* Permite clicar nos botões dentro da overlay */
+.controles-overlay * {
+    pointer-events: auto;
+}
+
+.btn-voltar-player {
+    position: fixed; /* Mantém ele fixo no canto da tela */
+    top: 30px;       /* Distância do topo */
+    left: 30px;      /* Distância da esquerda */
+    z-index: 2100;   /* Acima de tudo (controles e vídeo) */
+    
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    
+    color: white !important;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 18px;
+    
+    padding: 10px 20px;
+    background: rgba(0, 0, 0, 0.5); /* Fundo escuro transparente */
+    border-radius: 8px;
+    backdrop-filter: blur(10px);    /* Efeito de vidro */
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+}
+
+.btn-deletar-card {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0; /* Começa invisível */
+    transition: all 0.3s ease;
+    z-index: 30;
+}
+
+.bloco-serie:hover .btn-deletar-card {
+    opacity: 1; /* Aparece no hover */
+}
+
+.btn-deletar-card:hover {
+    background: #e50914; /* Vermelho ao passar o mouse */
+    transform: scale(1.1);
+}
+
+.btn-voltar-player:hover {
+    background: var(--cor-principal); /* Seu vermelho */
+    transform: scale(1.05);
+    box-shadow: 0 0 15px var(--cor-principal);
+    border-color: transparent;
+}
+
+.btn-voltar-player svg {
+    transition: transform 0.2s;
+}
+
+.btn-voltar-player:hover svg {
+    transform: translateX(-5px); /* Efeito de seta movendo */
+}
+
+.video-container.show-controls .btn-voltar-player {
+    opacity: 1;
+}
+
+.search-container {
+    width: 100%;
+    max-width: 500px;
+    margin: 20px auto;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+#inputPesquisa {
+    width: 100%;
+    padding: 12px 20px;
+    padding-right: 45px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 25px;
+    color: white;
+    font-size: 16px;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    outline: none;
+}
+
+#inputPesquisa:focus {
+    border-color: var(--cor-principal); /* Seu vermelho */
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 15px rgba(229, 9, 20, 0.3);
+}
+
+.search-icon {
+    position: absolute;
+    right: 15px;
+    color: rgba(255, 255, 255, 0.5);
+    pointer-events: none;
+}
+
+.header-principal {
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* Empurra os itens para os cantos */
+    padding: 10px 4%;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+    position: fixed; /* Deixa o topo fixo ao rolar a página */
+    top: 0;
+    width: 100%;
+    z-index: 1000;
+    box-sizing: border-box;
+}
+
+/* Container da barra de pesquisa (Meio) */
+.search-container {
+    flex: 1; /* Faz ela ocupar o espaço central */
+    display: flex;
+    justify-content: center; /* Centraliza o input dentro desse espaço */
+    max-width: 600px;
+}
+
+#inputPesquisa {
+    width: 80%; /* Largura da barra no meio */
+    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    color: white;
+    backdrop-filter: blur(10px);
+}
+
+/* Lado Direito (Botão +) */
+.header-direita {
+    display: flex;
+    justify-content: flex-end;
+    width: 150px; /* Garante espaço igual ao da esquerda para o meio ficar exato */
+}
+
+/* Botão Redondo com a Cruz Centralizada */
+.btn-mais {
+    background-color: var(--cor-principal);
+    color: white;
+    border: none;
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 30px;
+    font-weight: bold;
+    
+    /* O SEGREDO DA CENTRALIZAÇÃO: */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 0;
+    padding: 0;
+    
+    transition: transform 0.2s, background-color 0.2s;
+}
+
+.btn-mais:hover {
+    transform: scale(1.1);
+    background-color: #ff0000;
+}
+
+/* Ajuste para o Banner não ficar embaixo do Header fixo */
+.banner-netflix {
+    margin-top: 0; /* O header agora é transparente e fica por cima */
+}
+
+.proximo-overlay {
+    position: absolute;
+    bottom: 120px; /* Acima da barra de controles */
+    right: 40px;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 20px;
+    border-radius: 10px;
+    border-left: 5px solid var(--cor-principal); /* Aquele detalhe vermelho lateral */
+    color: white;
+    display: none; /* Começa escondido */
+    z-index: 100;
+    backdrop-filter: blur(10px);
+    animation: slideIn 0.5s ease-out;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+.btn-proximo {
+    background: var(--cor-principal);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 4px;
+    margin-top: 10px;
+}
+
+.btn-proximo:hover {
+    background: #ff0000;
+}
+
+.proximo-overlay {
+    position: absolute;
+    bottom: 100px;
+    right: 30px;
+    background: rgba(20, 20, 20, 0.9);
+    padding: 15px;
+    border-radius: 8px;
+    color: white;
+    display: none; /* O JS controla isso */
+    z-index: 100;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.proximo-overlay {
+    /* ... seu código anterior ... */
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.proximo-overlay:hover {
+    transform: scale(1.05);
+    background: rgba(30, 30, 30, 1);
+}
+
+/* --- OVERLAY DE PRÓXIMO EPISÓDIO --- */
+
+.proximo-overlay {
+    position: absolute;
+    bottom: 110px; /* Fica acima da barra de controles */
+    right: 30px;
+    background: rgba(20, 20, 20, 0.95);
+    padding: 20px;
+    border-radius: 8px;
+    border-left: 4px solid #e50914; /* Detalhe em vermelho */
+    color: white;
+    display: none; /* Controlado pelo JS */
+    z-index: 100;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    backdrop-filter: blur(10px);
+    animation: entrarSlide 0.5s ease-out;
+}
+
+@keyframes entrarSlide {
+    from {
+        transform: translateX(50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.proximo-overlay p {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.btn-proximo {
+    background: white;
+    color: black;
+    border: none;
+    padding: 8px 16px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.2s;
+}
+
+.logo-site-pequena {
+    color: #e50914; /* O vermelho clássico da Netflix */
+    margin: 0;
+    font-size: 1.5rem; /* Ajuste o tamanho como preferir */
+    font-weight: 900;
+}
+
+.btn-proximo:hover {
+    background: #e50914;
+    color: white;
+}
+.header-principal {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 4%;
+    
+    /* MUDANÇA AQUI: de absolute para fixed */
+    position: fixed; 
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+    
+    /* Melhora a visibilidade ao rolar por cima de outros vídeos */
+    background: rgba(20, 20, 20, 0.8); 
+    backdrop-filter: blur(15px); /* Efeito de vidro jateado */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    
+    box-sizing: border-box;
+    transition: background 0.3s ease; /* Para um efeito suave */
+}
+
+/* Ajuste para o Banner não começar "cortado" pelo header fixo */
+.banner-netflix {
+    margin-top: 0; 
+}
+
+.search-container {
+    flex: 0 1 400px; /* Largura fixa para não esticar demais */
+    margin: 0 20px;
+    position: relative;
+}
+
+#inputPesquisa {
+    width: 100%;
+    padding: 8px 15px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px; /* Estilo mais Netflix, menos redondo */
+    color: white;
+}
+
+/* Remove qualquer outro botão de + que esteja solto no código */
+header > button { display: none; } 
+.header-direita .btn-mais { display: block; }
