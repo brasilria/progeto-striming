@@ -11,7 +11,8 @@ def atualizar_meu_banco():
         CREATE TABLE IF NOT EXISTS usuarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             pobre_id TEXT UNIQUE,
-            nome_usuario TEXT,
+            nome TEXT,
+            conta_id INTEGER,
             data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
