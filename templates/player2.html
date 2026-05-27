@@ -64,12 +64,12 @@
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             let urlInicial = "{{ url_video }}";
+            let container = document.getElementById("videoContainer");
             let videoElement = document.getElementById("meuVideo");
             let sourceElement = videoElement.querySelector("source");
 
             // 1. Se o vídeo for Local/Offline (Salvo na sua pasta static)
             if (urlInicial.startsWith("/static") || urlInicial.startsWith("static")) {
-                // Garante a barra correta no início do caminho
                 let caminhoLimpo = urlInicial.startsWith("/") ? urlInicial : "/" + urlInicial;
                 sourceElement.src = caminhoLimpo;
                 videoElement.load();
@@ -87,10 +87,17 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success && data.url) {
-                        sourceElement.src = data.url;
-                        videoElement.load();
-                        videoElement.play().catch(e => console.log("Autoplay bloqueado pelo navegador, aguardando clique."));
-                        console.log("✅ Stream injetado com sucesso no player nativo!");
+                        // Se o Python avisar que é YouTube, trocamos o player por um Iframe Embed
+                        if (data.is_youtube) {
+                            console.log("📺 Link do YouTube detectado. Carregando Player Embed...");
+                            container.innerHTML = `<iframe src="${data.url}" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+                        } else {
+                            // Se for link direto (Telegram, etc.), usa o player comum
+                            sourceElement.src = data.url;
+                            videoElement.load();
+                            videoElement.play().catch(e => console.log("Autoplay bloqueado pelo navegador, aguardando clique."));
+                            console.log("✅ Stream injetado com sucesso no player nativo!");
+                        }
                     } else {
                         alert("Erro ao quebrar o link do vídeo: " + (data.error || "Desconhecido"));
                     }
