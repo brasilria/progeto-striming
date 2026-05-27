@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pobreflix Online - Comunidade</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* MANTENDO SEU PADRÃO ORIGINAL COM ESPAÇAMENTO REFORÇADO */
+        body {
+            background-color: #141414 !important;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        
+        .navbar-online {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            padding: 15px 30px !important;
+            background: #141414 !important;
+            border-bottom: 1px solid #333 !important;
+            position: relative !important;
+            z-index: 10 !important;
+        }
+        
+        /* ─── RESET DA ESTRUTURA PRINCIPAL (CORRIGE O EMPURRÃO PARA CIMA) ─── */
+        .cm-main-container {
+            position: relative !important;
+            display: block !important;
+            margin-top: 20px !important;
+            padding: 0 30px !important;
+            clear: both !important;
+        }
+
+        .cm-titulo-secao {
+            color: white !important;
+            font-size: 24px !important;
+            font-weight: bold !important;
+            margin: 30px 0 10px 0 !important;
+            padding: 0 !important;
+            position: relative !important;
+            display: block !important;
+        }
+
+        /* Grade de vídeos totalmente isolada das garras do style.css global */
+        .feed-container {
+            display: grid !important;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)) !important;
+            gap: 25px !important;
+            padding: 0 !important;
+            margin-top: 15px !important;
+            margin-bottom: 50px !important;
+            position: relative !important;
+        }
+        
+        .card-video {
+            background: #222 !important;
+            border-radius: 8px !important;
+            overflow: hidden !important;
+            cursor: pointer;
+            transition: transform 0.2s;
+            display: flex !important;
+            flex-direction: column !important;
+            position: relative !important;
+            height: auto !important;
+            border: 1px solid #333 !important;
+        }
+        .card-video:hover {
+            transform: scale(1.03);
+        }
+
+        /* FIX DE CAPA: Mantém a proporção de cinema e impede distorções de texto */
+        .cm-capa-wrapper {
+            width: 100% !important;
+            height: 150px !important;
+            background: linear-gradient(135deg, #2b2b2b 0%, #0d0d0d 100%) !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            position: relative !important;
+            overflow: hidden !important;
+            border-bottom: 1px solid #2b2b2b !important;
+            flex-shrink: 0 !important;
+        }
+        .cm-capa-wrapper img {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+            display: block !important;
+        }
+        .cm-fallback-play {
+            position: absolute !important;
+            color: #e50914 !important;
+            font-size: 38px !important;
+            font-weight: bold !important;
+            display: none;
+        }
+
+        /* ─── RESET TOTAL DO CONTAINER DE TEXTO CONTRA CONFLITOS ─── */
+        .cm-info-isolada {
+            padding: 15px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            position: relative !important;
+            background: #222 !important;
+            width: 100% !important;
+            height: auto !important;
+            box-sizing: border-box !important;
+        }
+
+        /* Organiza os títulos e parágrafos linearmente (um abaixo do outro) */
+        .cm-info-isolada h3 { 
+            position: relative !important;
+            top: auto !important;
+            left: auto !important;
+            margin: 0 0 8px 0 !important; 
+            font-size: 16px !important; 
+            color: white !important;
+            display: block !important;
+            text-align: left !important;
+            font-weight: bold !important;
+            line-height: 1.2 !important;
+        }
+        .cm-info-isolada p { 
+            position: relative !important;
+            top: auto !important;
+            left: auto !important;
+            margin: 0 0 4px 0 !important; 
+            color: #aaa !important; 
+            font-size: 13px !important; 
+            display: block !important;
+            text-align: left !important;
+            line-height: 1.3 !important;
+        }
+
+        /* ─── CONTROLES SUPERIORES ISOLADOS (CORRIGE O BOTÃO CORTADO) ─── */
+        .cm-zona-controles {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            padding: 25px 30px 0 30px !important;
+            gap: 20px !important;
+            position: relative !important;
+            z-index: 5 !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+        .cm-caixa-pesquisa {
+            display: flex !important;
+            align-items: center !important;
+            background: #2b2b2b !important;
+            border: 1px solid #444 !important;
+            border-radius: 4px !important;
+            padding: 4px 15px !important;
+            width: 100% !important;
+            max-width: 400px !important;
+            height: 40px !important;
+            box-sizing: border-box !important;
+        }
+        .cm-caixa-pesquisa input {
+            background: transparent !important;
+            border: none !important;
+            color: white !important;
+            outline: none !important;
+            width: 100% !important;
+            height: 100% !important;
+            font-size: 14px !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            box-shadow: none !important;
+        }
+        .cm-btn-adicionar {
+            background: #e50914 !important;
+            color: white !important;
+            border: none !important;
+            padding: 10px 20px !important;
+            border-radius: 4px !important;
+            font-weight: bold !important;
+            cursor: pointer !important;
+            font-size: 14px !important;
+            height: 40px !important;
+            white-space: nowrap !important;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3) !important;
+        }
+        .cm-btn-adicionar:hover {
+            background: #b20710 !important;
+        }
+
+        /* BOTÃO SECUNDÁRIO DO CANAL */
+        .cm-btn-canal {
+            background: #2b2b2b !important;
+            color: white !important;
+            border: 1px solid #444 !important;
+            padding: 10px 20px !important;
+            border-radius: 4px !important;
+            font-weight: bold !important;
+            cursor: pointer !important;
+            font-size: 14px !important;
+            height: 40px !important;
+            white-space: nowrap !important;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3) !important;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+        }
+        .cm-btn-canal:hover {
+            background: #3a3a3a !important;
+            border-color: #555 !important;
+        }
+
+        /* MODAL EXCLUSIVO */
+        .cm-modal-sobreposto {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.85);
+        }
+        .cm-modal-corpo {
+            background-color: #181818;
+            margin: 15% auto;
+            padding: 25px;
+            border-radius: 6px;
+            width: 90%;
+            max-width: 450px;
+            border: 1px solid #333;
+            color: white;
+        }
+        .cm-modal-corpo h2 { margin-top: 0; font-size: 20px; color: white; }
+        .cm-modal-corpo input {
+            width: 100% !important;
+            padding: 10px !important;
+            margin-bottom: 15px !important;
+            background: #2b2b2b !important;
+            border: 1px solid #444 !important;
+            color: white !important;
+            border-radius: 4px !important;
+            box-sizing: border-box !important;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar-online">
+        <a href="/" style="color: red; font-size: 24px; font-weight: bold; text-decoration: none;">POBREFLIX ONLINE</a>
+        <a href="/" style="color: white; text-decoration: none; font-weight: bold;">← Voltar para o Local</a>
+    </nav>
+
+    <div class="cm-zona-controles">
+        <div class="cm-caixa-pesquisa">
+            <input type="text" id="inputPesquisaComunidade" placeholder="Pesquise..." onkeyup="filtrarVideosComunidade()">
+            <span style="color: #aaa;">🔍</span>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <a href="/meu_canal" style="text-decoration: none;">
+                <button class="cm-btn-canal">Meu Canal 📺</button>
+            </a>
+            <button class="cm-btn-adicionar" onclick="abrirModalComunidade()">+ Adicionar</button>
+        </div>
+    </div>
+
+    <div class="cm-main-container">
+        <h2 class="cm-titulo-secao">Feed da Comunidade Soberana</h2>
+        
+        <div class="feed-container">
+            {% for video in videos %}
+            <div class="card-video bloco-video" id="card-{{ video.id }}">
+                
+                <div class="cm-capa-wrapper" onclick="playVideo('{{ video.id }}')">
+                    <span class="cm-fallback-play" id="play-fallback-{{ video.id }}">▶</span>
+                    {% if video.capa_url and "about.netflix.com" not in video.capa_url and video.capa_url != 'None' %}
+                        <img src="{{ video.capa_url }}" alt="Capa" onerror="handleImageError(this, '{{ video.id }}')">
+                    {% else %}
+                        <script>document.addEventListener("DOMContentLoaded", function() { document.getElementById("play-fallback-{{ video.id }}").style.display = "block"; });</script>
+                    {% endif %}
+                </div>
+
+                <div class="cm-info-isolada">
+                    <div class="info-video" onclick="event.stopPropagation();">
+                        <h3 onclick="playVideo('{{ video.id }}')">{{ video.titulo }}</h3>
+                        <p onclick="playVideo('{{ video.id }}')">{{ video.descricao if video.descricao else '' }}</p>
+
+                        <small style="color: #777; display: block; margin-top: 4px; font-size: 11px;">
+                            Canal: <strong style="color: #999;">{{ video.nome_autor }}</strong>
+                        </small>
+                    </div>
+                </div>
+
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div id="modalComunidade" class="cm-modal-sobreposto">
+        <div class="cm-modal-corpo">
+            <h2>Compartilhar Vídeo</h2>
+            <form id="formComunidade">
+                <input type="text" id="addTitulo" placeholder="Título do Vídeo" required>
+                <input type="url" id="addUrl" placeholder="URL (YouTube, Telegram, etc.)" required>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button type="button" onclick="fecharModalComunidade()" style="background: #444; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">Sair</button>
+                    <button type="submit" style="background: #e50914; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold;">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if recomendados %}
+        <h2 style="color: #e50914; margin-top: 20px; margin-bottom: 15px; font-size: 24px;">🌟 Recomendados para Si (Com base no seu gosto)</h2>
+        <div class="cm-grid" style="margin-bottom: 50px; border-bottom: 2px solid #333; padding-bottom: 30px;">
+            {% for video in recomendados %}
+                <div class="cm-card" onclick="window.location.href='/assistir/{{ video.id }}'">
+                    <div class="cm-capa-wrapper">
+                        <img src="{{ video.capa_url }}" alt="Capa do Vídeo">
+                    </div>
+                    <div class="cm-card-info">
+                        <div class="cm-video-titulo">{{ video.titulo }}</div>
+                        <div class="cm-video-autor">Por: {{ video.nome_autor if video.nome_autor else 'Bot Soberano' }}</div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        
+        <h2 style="color: white; margin-bottom: 15px; font-size: 24px;">🌐 Todos os Vídeos da Comunidade</h2>
+    {% endif %}
+
+    <script>
+        function playVideo(id) {
+            window.location.href = "/assistir/" + id;
+        }
+
+        function handleImageError(imgElement, id) {
+            imgElement.style.display = 'none';
+            document.getElementById('play-fallback-' + id).style.display = 'block';
+        }
+
+        function filtrarVideosComunidade() {
+            let input = document.getElementById('inputPesquisaComunidade').value.toLowerCase();
+            let cards = document.querySelectorAll('.bloco-video'); 
+            cards.forEach(card => {
+                let titulo = card.querySelector('h3').innerText.toLowerCase();
+                card.style.display = titulo.includes(input) ? "block" : "none";
+            });
+        }
+
+        function abrirModalComunidade() { document.getElementById('modalComunidade').style.display = 'block'; }
+        function fecharModalComunidade() { document.getElementById('modalComunidade').style.display = 'none'; }
+
+        document.getElementById('formComunidade').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const dados = {
+                titulo: document.getElementById('addTitulo').value,
+                url: document.getElementById('addUrl').value,
+                descricao: "Vídeo compartilhado na comunidade" // Adicionado para evitar erro de coluna nula no banco!
+            };
+            
+            fetch('/publicar_bot', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dados)
+            }).then(res => {
+                if(res.ok) { 
+                    location.reload(); 
+                } else { 
+                    // Mostra o erro real que o servidor Python respondeu
+                    res.json().then(err => {
+                        alert("Erro ao salvar o link: " + (err.mensagem || "Erro desconhecido"));
+                    }).catch(() => alert("Erro crítico no servidor. Verifique o terminal Python."));
+                }
+            }).catch(error => {
+                console.error("Erro na requisição:", error);
+                alert("Não foi possível conectar ao servidor.");
+            });
+        });
+    </script>
+</body>
+</html>

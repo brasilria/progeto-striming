@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pobreflix - Minha Netflix Offline</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* ESTILOS DA NOVA BARRA LATERAL RETRÁTIL E HEADER */
+        :root {
+            --pobreflix-red: #e50914;
+            --bg-lateral: #0a0a0a;
+            --bg-item-hover: #222222;
+        }
+
+        /* HEADER PRINCIPAL AJUSTADO */
+        .header-principal {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 1000;
+            box-sizing: border-box;
+            background: linear-gradient(to bottom, rgba(20, 20, 20, 0.95) 80%, transparent);
+        }
+
+        .header-esquerda {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .logo-site-pequena {
+            margin: 0;
+            font-size: 24px;
+            letter-spacing: 1px;
+        }
+
+        /* Botão de 3 Barrinhas */
+        .btn-menu-hamburguer {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 22px;
+            cursor: pointer;
+            padding: 5px 0;
+            margin-top: 2px;
+            display: flex;
+            align-items: center;
+            transition: color 0.2s;
+        }
+
+        .btn-menu-hamburguer:hover {
+            color: var(--pobreflix-red);
+        }
+
+        /* Botões da Direita */
+        .header-acoes-direita {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        /* Botão Perfil do Usuário Superior */
+        .perfil-topo-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            color: white;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            border: 1px solid #333;
+            transition: 0.2s;
+        }
+
+        .perfil-topo-link:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: white;
+        }
+
+        .avatar-letra {
+            width: 24px;
+            height: 24px;
+            background-color: var(--pobreflix-red);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        /* BARRA LATERAL GAVETA */
+        .barra-lateral-gaveta {
+            position: fixed;
+            top: 0;
+            left: -280px; /* Escondida para a esquerda */
+            width: 260px;
+            height: 100vh;
+            background-color: var(--bg-lateral);
+            z-index: 2000;
+            box-shadow: 5px 0 15px rgba(0,0,0,0.7);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+            transition: left 0.3s ease; /* Transição suave de deslize */
+        }
+
+        /* Quando a barra estiver ativa */
+        .barra-lateral-gaveta.aberta {
+            left: 0;
+        }
+
+        .topo-gaveta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .logo-gaveta {
+            color: var(--pobreflix-red);
+            font-size: 22px;
+            font-weight: bold;
+            margin: 0;
+        }
+
+        .btn-fechar-gaveta {
+            background: none;
+            border: none;
+            color: #aaa;
+            font-size: 28px;
+            cursor: pointer;
+        }
+        .btn-fechar-gaveta:hover { color: white; }
+
+        /* Itens do Menu */
+        .menu-lista {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex-grow: 1;
+        }
+
+        .menu-item-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #ccc;
+            text-decoration: none;
+            padding: 12px 15px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 15px;
+            transition: 0.2s;
+        }
+
+        .menu-item-link:hover, .menu-item-link.ativo {
+            color: white;
+            background-color: var(--bg-item-hover);
+        }
+
+        .menu-item-link svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        .menu-item-link.ativo svg {
+            color: var(--pobreflix-red);
+        }
+
+        .btn-desconectar-conta {
+            color: #ff4444;
+            font-size: 14px;
+            text-decoration: none;
+            padding: 10px 15px;
+            margin-top: auto;
+            font-weight: bold;
+            opacity: 0.8;
+        }
+        .btn-desconectar-conta:hover { opacity: 1; }
+
+        /* Sombra de Fundo ao abrir o menu */
+        .overlay-menu {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1500;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="overlayMenu" class="overlay-menu" onclick="alternarMenu(false)"></div>
+
+    <div id="barraLateral" class="barra-lateral-gaveta">
+        <div class="topo-gaveta">
+            <h2 class="logo-gaveta">POBREFLIX</h2>
+            <button class="btn-fechar-gaveta" onclick="alternarMenu(false)">&times;</button>
+        </div>
+        
+        <nav class="menu-lista">
+            <a href="/" class="menu-item-link ativo">
+                <svg viewBox="0 0 24 24"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/></svg>
+                Início
+            </a>
+            <a href="/historico" class="menu-item-link">
+                <svg viewBox="0 0 24 24"><path d="M13,3A9,9 0 0,0 4,12H1L4.89,15.89L4.9,16L9,12H6A7,7 0 0,1 13,5A7,7 0 0,1 20,12A7,7 0 0,1 13,19C11.07,19 9.32,18.21 8.06,16.94L6.64,18.36C8.27,20 10.5,21 13,21A9,9 0 0,0 22,12A9,9 0 0,0 13,3M12,7V13L17.5,16.25L18.25,15L13.5,12.25V7H12Z"/></svg>
+                Histórico
+            </a>
+            <a href="/favoritos" class="menu-item-link">
+                <svg viewBox="0 0 24 24"><path d="M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5C2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35Z"/></svg>
+                Favoritos
+            </a>
+        </nav>
+
+        <a href="/logout_conta" class="btn-desconectar-conta">Desconectar E-mail</a>
+    </div>
+
+    <header class="header-principal">
+        <div class="header-esquerda">
+            <h1 class="logo-site-pequena">POBREFLIX</h1>
+            <button class="btn-menu-hamburguer" onclick="alternarMenu(true)" title="Abrir Menu">
+                ☰ Menu
+            </button>
+        </div>
+
+        <div class="search-container">
+            <input type="text" id="inputPesquisa" placeholder="O que vamos assistir hoje?" onkeyup="filtrarVideos()">
+            <span class="search-icon">🔍</span>
+        </div>
+
+        <div class="header-acoes-direita">
+            <a href="/comunidade" title="Ir para a Comunidade Online" style="background: hsl(0, 98%, 38%); color: hsl(0, 0%, 94%); padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; display: flex; align-items: center; justify-content: center;">
+                🌐
+            </a>
+
+            {% if session.get('usuario_logado') %}
+            <a href="/sair_perfil" class="perfil-topo-link" title="Mudar de Perfil">
+                <div class="avatar-letra">{{ session['usuario_logado'][0].upper() }}</div>
+                <span>{{ session['usuario_logado'] }} ▾</span>
+            </a>
+            {% endif %}
+
+            <button onclick="abrirModal()" class="btn-mais">+</button>
+        </div>
+    </header>
+
+    <section class="banner-netflix">
+        <div id="carrossel-container">
+            {% for s in series %}
+            <div class="slide-item {% if loop.first %}ativo{% endif %}" 
+                 style="background-image: linear-gradient(to top, #141414 5%, transparent 95%), 
+                        url('{{ url_for('static', filename='capas/' + s.capa) }}');">
+                <div class="banner-info">
+                    <h1 class="logo-site">ASSISTA</h1>
+                    <h2 class="titulo-destaque">{{ s.nome }}</h2>
+                    <p class="desc-destaque">{{ s.descricao }}</p>
+                    <div class="botoes-banner">
+                        {% if s.eh_video_unico %}
+                            <a href="/video/{{ s.arquivo }}/{{ s.primeiro_video }}" class="btn-assistir">▶ Assistir Filme</a>
+                        {% else %}
+                            <a href="/serie/{{ s.arquivo }}" class="btn-assistir">▶ Ver Episódios</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %} 
+        </div>
+    </section>
+
+    <main>
+        <div class="grade-series">
+            {% for serie in series %} 
+                <div class="bloco-serie" id="serie-{{ serie.id }}">
+                    <div class="capa-container">
+                        <img src="{{ url_for('static', filename='capas/' + serie.capa) }}" class="capa-img" alt="Capa de {{ serie.nome }}">
+                        
+                        <button class="btn-deletar-card" onclick="deletarConteudoLocal('{{ serie.id }}')" title="Excluir Conteúdo do Servidor">
+                            &times;
+                        </button>
+
+                        <form action="{{ url_for('trocar_capa', nome_base=serie.arquivo) }}" method="POST" enctype="multipart/form-data" class="form-trocar-capa">
+                            <input type="file" name="nova_capa" accept="image/jpeg" onchange="this.form.submit()" style="display: none;" id="capa-{{ serie.id }}">
+                            <label for="capa-{{ serie.id }}" class="btn-trocar-capa">
+                                <svg viewBox="0 0 24 24"><path d="M4,4H7L9,2H15L17,4H20A2,2 0 0,1 22,6V18A2,2 0 0,1 20,20H4A2,2 0 0,1 2,18V6A2,2 0 0,1 4,4M12,7A5,5 0 0,0 7,12A5,5 0 0,0 12,17A5,5 0 0,0 17,12A5,5 0 0,0 12,7M12,9A3,3 0 0,1 15,12A3,3 0 0,1 12,15A3,3 0 0,1 9,12A3,3 0 0,1 12,9Z"/></svg>
+                                <span class="texto-capa">Alterar JPG</span>
+                            </label>
+                        </form>
+                    </div>
+                    <div class="info">
+                        <h3>{{ serie.nome }}</h3>
+                        {% if serie.eh_video_unico %}
+                            <a href="/video/{{ serie.arquivo }}/{{ serie.primeiro_video }}" class="btn-ver">Assistir</a>
+                        {% else %}
+                            <a href="/serie/{{ serie.arquivo }}" class="btn-ver">Episódios</a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %} 
+        </div>
+    </main>
+
+    <div id="modal" class="modal">
+        <div class="modal-conteudo">
+            <h2>Adicionar Conteúdo</h2>
+            <form action="/adicionar" method="POST" enctype="multipart/form-data">
+                <input type="text" name="nome" placeholder="Nome da Série/Filme" required>
+                <textarea name="descricao" placeholder="Breve descrição..." rows="3"></textarea>
+                <input type="file" name="arquivo" accept="video/*,.zip" required>
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button type="submit">Salvar</button>
+                    <button type="button" onclick="fecharModal()" style="background: #333;">Sair</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function abrirModal() { document.getElementById('modal').style.display = 'block'; }
+        function fecharModal() { document.getElementById('modal').style.display = 'none'; }
+        
+        // FUNÇÃO PARA CONTROLAR A ABERTURA/FECHAMENTO DO MENU LATERAL
+        function alternarMenu(abrir) {
+            const menu = document.getElementById('barraLateral');
+            const overlay = document.getElementById('overlayMenu');
+            if (abrir) {
+                menu.classList.add('aberta');
+                overlay.style.display = 'block';
+            } else {
+                menu.classList.remove('aberta');
+                overlay.style.display = 'none';
+            }
+        }
+
+        function deletarConteudoLocal(id) {
+            if (confirm("Deseja realmente apagar esta mídia e remover todos os arquivos de vídeo do HD?")) {
+                fetch(`/deletar_capa_filme/${id}`, { 
+                    method: 'DELETE' 
+                })
+                .then(response => {
+                    if (response.ok) {
+                        const elemento = document.getElementById(`serie-${id}`);
+                        if (elemento) {
+                            elemento.style.transition = "0.3s";
+                            elemento.style.opacity = "0";
+                            elemento.style.transform = "scale(0.8)";
+                            setTimeout(() => elemento.remove(), 300);
+                        }
+                    } else {
+                        alert("Erro ao excluir os arquivos físicos do servidor.");
+                    }
+                })
+                .catch(error => console.error('Erro na requisição:', error));
+            }
+        }
+
+        function filtrarVideos() {
+            let input = document.getElementById('inputPesquisa').value.toLowerCase();
+            let cards = document.querySelectorAll('.bloco-serie'); 
+            cards.forEach(card => {
+                let titulo = card.querySelector('h3').innerText.toLowerCase();
+                card.style.display = titulo.includes(input) ? "block" : "none";
+            });
+        }
+    </script>
+    
+    <script>
+        // CARROSSEL DE DESLIZE CONTÍNUO (EFEITO NETFLIX)
+        let slides = document.querySelectorAll('.slide-item');
+        let indiceAtual = 0;
+        const TEMPO_EXIBICAO = 14000; 
+
+        if (slides.length > 1) {
+            setInterval(() => {
+                slides[indiceAtual].classList.remove('ativo');
+                slides[indiceAtual].classList.add('saindo');
+                
+                let slideAnterior = indiceAtual;
+                indiceAtual = (indiceAtual + 1) % slides.length;
+                
+                slides[indiceAtual].classList.add('ativo');
+                
+                setTimeout(() => {
+                    slides[slideAnterior].classList.remove('saindo');
+                }, 1200);
+
+            }, TEMPO_EXIBICAO);
+        }
+    </script>
+</body>
+</html>

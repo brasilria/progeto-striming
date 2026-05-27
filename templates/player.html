@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pobreflix - {{ titulo }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* FORÇA O MOUSE A FICAR VISÍVEL EM TODA A TELA */
+        body, .video-container, video, .click-overlay {
+            cursor: default !important;
+        }
+
+        /* FAZ O MOUSE VIRAR A MÃOZINHA DE CLIQUE NOS BOTÕES E BARRA */
+        .btn-acao, .btn-voltar-player, .barra-container, button, a {
+            cursor: pointer !important;
+        }
+
+        /* Garante que a barra de progresso funcione */
+        .barra-container {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            position: relative;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            transition: height 0.1s;
+        }
+        .barra-container:hover {
+            height: 12px;
+        }
+        .barra-progresso {
+            height: 100%;
+            background-color: #e50914; /* Vermelho Netflix */
+            width: 0%;
+            border-radius: 4px;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+    </style>
+</head>
+<body class="body-player">
+
+    <div class="video-container video-playing" id="videoContainer">
+        
+        <div id="proximoOverlay" class="proximo-overlay" style="display: none;">
+            <p>Próximo episódio em <span id="contagemRegressiva">8</span>s...</p>
+            <button onclick="proximoEpisodio()" class="btn-proximo">Próximo ▶</button>
+        </div>
+
+        <a href="/" class="btn-voltar-player">
+            <svg viewBox="0 0 24 24" width="24" height="24">
+                <path fill="currentColor" d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"/>
+            </svg>
+            <span>Voltar para o Início</span>
+        </a>
+
+        <div class="click-overlay" id="videoClick"></div>
+
+        <video id="videoPlayer" width="100%" height="auto" controls autoplay>
+            <source src="{{ url_video }}" type="video/mp4">
+            Seu navegador não suporta a reprodução deste vídeo.
+        </video>
+
+        <div class="controles-custom">
+            <div class="barra-container" id="barraContainer">
+                <div id="progresso" class="barra-progresso"></div>
+            </div>
+
+            <div class="botoes-controle">
+                <button id="rewind" class="btn-acao">↺</button>
+                <button id="playPause" class="btn-acao btn-central">❚❚</button>
+                <button id="forward" class="btn-acao">↻</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // CORREÇÃO DE ID: Agora pegando o 'videoPlayer' real do HTML
+        const video = document.getElementById('videoPlayer');
+        const btnPlay = document.getElementById('playPause');
+        const barra = document.getElementById('progresso');
+        const barraContainer = document.getElementById('barraContainer');
+        
+        const proximoEp = "{{ proximo }}";
+        const nomeSerie = "{{ nome_serie }}";
+
+        // Alterna entre Play e Pause de verdade de forma limpa
+        function togglePlay() {
+            if (video.paused) {
+                video.play();
+                btnPlay.innerHTML = '❚❚';
+            } else {
+                video.pause();
+                btnPlay.innerHTML = '▶';
+            }
+        }
+
+        // Cliques para Pausar / Despausar
+        document.getElementById('videoClick').addEventListener('click', togglePlay);
+        btnPlay.addEventListener('click', togglePlay);
+
+        // Atualiza os ícones caso o usuário use os controles nativos do próprio navegador
+        video.addEventListener('play', () => btnPlay.innerHTML = '❚❚');
+        video.addEventListener('pause', () => btnPlay.innerHTML = '▶');
+
+        // Atualização automática da barra vermelha conforme o vídeo rola
+        video.addEventListener('timeupdate', () => {
+            if (video.duration) {
+                const perc = (video.currentTime / video.duration) * 100;
+                barra.style.width = perc + '%';
+            }
+        });
+
+        // Permite clicar em qualquer lugar da barra e avançar/voltar o filme
+        barraContainer.addEventListener('click', (e) => {
+            const rect = barraContainer.getBoundingClientRect();
+            const cliqueX = e.clientX - rect.left;
+            const larguraTotal = rect.width;
+            const novaPorcentagem = cliqueX / larguraTotal;
+            video.currentTime = novaPorcentagem * video.duration;
+        });
+
+        // Botão de Avançar 10 segundos funcionando
+        document.getElementById('forward').onclick = () => { 
+            video.currentTime += 10; 
+        };
+
+        // Botão de Voltar 10 segundos funcionando
+        document.getElementById('rewind').onclick = () => { 
+            video.currentTime -= 10; 
+        };
+
+        // Gerenciamento automático do fim do episódio
+        let tempoRestante = 8;
+        let intervaloContagem;
+
+        video.addEventListener('ended', function() {
+            if (!proximoEp || proximoEp === "None" || nomeSerie === "filme") {
+                window.history.back();
+                return;
+            }
+
+            document.getElementById('proximoOverlay').style.display = 'flex';
+            
+            intervaloContagem = setInterval(() => {
+                tempoRestante--;
+                document.getElementById('contagemRegressiva').innerText = tempoRestante;
+                
+                if (tempoRestante <= 0) {
+                    clearInterval(intervaloContagem);
+                    proximoEpisodio();
+                }
+            }, 1000);
+        });
+
+        function proximoEpisodio() {
+            if (proximoEp && proximoEp !== "None") {
+                window.location.href = "/video/" + nomeSerie + "/" + proximoEp;
+            }
+        }
+    </script>
+</body>
+</html>

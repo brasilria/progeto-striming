@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pobreflix - Meu Canal</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body {
+            background-color: #141414 !important;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+        .navbar-online {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            padding: 15px 30px !important;
+            background: #141414 !important;
+            border-bottom: 1px solid #333 !important;
+        }
+        .container-canal {
+            padding: 40px 30px;
+        }
+        .Info-canal {
+            margin-bottom: 30px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 20px;
+        }
+        .info-canal h1 {
+            margin: 0;
+            font-size: 28px;
+            color: #e50914;
+        }
+        .info-canal p {
+            color: #aaa;
+            margin: 5px 0 0 0;
+        }
+        /* Grade de histórico */
+        .historico-grid {
+            display: grid !important;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important;
+            gap: 25px !important;
+            margin-top: 20px;
+        }
+        .card-historico {
+            background: #222;
+            border: 1px solid #333;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        .capa-historico {
+            width: 100%;
+            height: 150px;
+            background: #000;
+            position: relative;
+        }
+        .capa-historico img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .info-video-historico {
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+        .info-video-historico h3 {
+            margin: 0 0 8px 0;
+            font-size: 16px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .btn-excluir-canal {
+            background: #e50914 !important;
+            color: white !important;
+            border: none !important;
+            padding: 8px 12px !important;
+            border-radius: 4px !important;
+            cursor: pointer !important;
+            font-weight: bold !important;
+            margin-top: auto !important;
+            font-size: 13px;
+            text-align: center;
+            transition: background 0.2s;
+        }
+        .btn-excluir-canal:hover {
+            background: #b20710 !important;
+        }
+        .sem-videos {
+            color: #aaa;
+            font-size: 16px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar-online">
+        <a href="/comunidade" style="color: red; font-size: 24px; font-weight: bold; text-decoration: none;">POBREFLIX CANAL</a>
+        <a href="/comunidade" style="color: white; text-decoration: none; font-weight: bold;">← Voltar para a Comunidade</a>
+    </nav>
+
+    <div class="container-canal">
+        <div class="info-canal">
+            <h1>Canal de {{ session['conta_email'] }}</h1>
+            <p>Gerencie aqui o histórico de vídeos que você compartilhou na rede.</p>
+        </div>
+
+        {% if videos %}
+            <div class="historico-grid">
+                {% for video in videos %}
+                    <div class="card-historico" id="card-{{ video.id }}">
+                        <div class="capa-historico">
+                            <img src="{{ video.capa_url }}" alt="Capa do vídeo">
+                        </div>
+                        <div class="info-video-historico">
+                            <h3>{{ video.titulo }}</h3>
+                            <button class="btn-excluir-canal" onclick="deletarDoMeuCanal('{{ video.id }}')">
+                                🗑️ Excluir Vídeo
+                            </button>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="sem-videos">Você ainda não postou nenhum vídeo na comunidade soberana.</p>
+        {% endif %}
+    </div>
+
+    <script>
+        function deletarDoMeuCanal(id) {
+            if (confirm("Tem certeza que deseja apagar permanentemente este vídeo do seu canal e do feed global?")) {
+                fetch(`/deletar_feed/${id}`, { 
+                    method: 'DELETE' 
+                })
+                .then(response => {
+                    if (response.ok) {
+                        const elemento = document.getElementById(`card-${id}`);
+                        if (elemento) {
+                            elemento.style.transition = "0.3s";
+                            elemento.style.opacity = "0";
+                            elemento.style.transform = "scale(0.8)";
+                            setTimeout(() => elemento.remove(), 300);
+                        }
+                    } else {
+                        alert("Erro ao tentar excluir o vídeo.");
+                    }
+                })
+                .catch(error => console.error('Erro:', error));
+            }
+        }
+    </script>
+</body>
+</html>

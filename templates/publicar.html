@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Pobrefix - Publicar Conteúdo</title>
+    <style>
+        :root { --red: #e50914; --dark: #141414; --card: #1f1f1f; }
+        body { background: var(--dark); color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .publish-card { background: var(--card); padding: 30px; border-radius: 10px; width: 100%; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h1 { color: var(--red); text-align: center; margin-bottom: 25px; }
+        .group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-size: 14px; color: #aaa; }
+        input, textarea { width: 100%; padding: 12px; background: #2c2c2c; border: 1px solid #444; border-radius: 5px; color: white; box-sizing: border-box; }
+        input:focus { border-color: var(--red); outline: none; }
+        button { width: 100%; padding: 15px; background: var(--red); color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 16px; margin-top: 10px; }
+        button:hover { background: #b20710; }
+        .cancel { display: block; text-align: center; margin-top: 15px; color: #888; text-decoration: none; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="publish-card">
+        <h1>Publicar Vídeo</h1>
+        <form action="/publicar" method="POST">
+            <div class="group">
+                <label>Título</label>
+                <input type="text" name="titulo" placeholder="Ex: Trailer GTA VI" required>
+            </div>
+            <div class="group">
+                <label>Link Direto (.mp4)</label>
+                <input type="text" name="url_video" placeholder="https://archive.org/...video.mp4" required>
+            </div>
+            <div class="group">
+                <label>Capa (URL da Imagem)</label>
+                <input type="text" name="capa_url" placeholder="https://site.com/foto.jpg">
+            </div>
+            <div class="group">
+                <label>Descrição</label>
+                <textarea name="descricao" rows="3" placeholder="Conte mais sobre o vídeo..."></textarea>
+            </div>
+            <button type="submit">PUBLICAR AGORA</button>
+        </form>
+        <a href="/comunidade" class="cancel">Voltar para a Comunidade</a>
+    </div>
+</body>
+</html>
