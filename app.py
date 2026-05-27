@@ -12,6 +12,8 @@ import telegram
 from telegram import Bot
 import asyncio
 import yt_dlp
+import re
+from flask import Flask, render_template, request
 
 app = Flask(__name__)
 app.secret_key = 'pobreflix_chave_secreta_super_segura'
