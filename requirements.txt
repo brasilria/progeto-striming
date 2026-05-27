@@ -29,3 +29,4 @@ urllib3==2.6.3
 Werkzeug==3.1.8
 yt-dlp==2026.3.17
 gunicorn
+psycopg2-binary
