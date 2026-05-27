@@ -619,13 +619,30 @@ def deletar_feed(video_id):
 def gerar_link_direto():
     data = request.json
     url_original = data.get('url')
-    if not url_original: return jsonify({'success': False, 'error': 'URL ausente'}), 400
+    if not url_original: 
+        return jsonify({'success': False, 'error': 'URL ausente'}), 400
 
+    # Se for um link do YouTube, não usamos o yt-dlp (evita bloqueio de robô)
+    if 'youtube.com' in url_original or 'youtu.be' in url_original:
+        try:
+            # Extrai o ID do vídeo usando expressão regular (pega formatos comuns e shorts)
+            video_id_match = re.search(r'(?:v=|\/v\/|youtu\.be\/|\/embed\/|\/shorts\/)([a-zA-Z0-9_-]{11})', url_original)
+            if video_id_match:
+                video_id = video_id_match.group(1)
+                link_embed = f"https://www.youtube.com/embed/{video_id}?autoplay=1"
+                # Retornamos uma flag 'is_youtube': True para o HTML saber que deve abrir um iframe
+                return jsonify({'success': True, 'url': link_embed, 'is_youtube': True})
+            else:
+                return jsonify({'success': False, 'error': 'ID do YouTube não identificado'}), 400
+        except Exception as e:
+            return jsonify({'success': False, 'error': f'Erro ao processar link do YouTube: {str(e)}'}), 500
+
+    # Se for link de outro servidor (como Telegram), mantém o comportamento normal com o yt-dlp
     ydl_opts = {'format': 'best[ext=mp4]/best', 'quiet': True, 'noplaylist': True}
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url_original, download=False)
-            return jsonify({'success': True, 'url': info.get('url')})
+            return jsonify({'success': True, 'url': info.get('url'), 'is_youtube': False})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
