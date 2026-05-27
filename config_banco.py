@@ -1,7 +1,7 @@
 import sqlite3
 
 def atualizar_meu_banco():
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect('zdatabase.db')
     cursor = conn.cursor()
 
     print("Criando tabelas da comunidade...")
