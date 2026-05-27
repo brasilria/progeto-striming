@@ -174,7 +174,7 @@ def criar_perfil():
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
         try:
-            cursor.execute('INSERT INTO usuarios (nome_usuario, pobre_id) VALUES (?, ?)', (nome, session['conta_id']))
+            cursor.execute('INSERT INTO usuarios (nome, conta_id) VALUES (?, ?)', (nome, session['conta_id']))
             conn.commit()
         except sqlite3.IntegrityError:
             pass
