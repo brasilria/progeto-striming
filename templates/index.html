@@ -263,8 +263,7 @@
         <div id="carrossel-container">
             {% for s in series %}
             <div class="slide-item {% if loop.first %}ativo{% endif %}" 
-                 style="background-image: linear-gradient(to top, #141414 5%, transparent 95%), 
-                        url('{{ url_for('static', filename='capas/' + s.capa) }}');">
+                 style="background-image: url('{{ url_for('static', filename='capas/' + (s.capa if s.capa and s.capa != 'None' else 'default.jpg')) }}');" 
                 <div class="banner-info">
                     <h1 class="logo-site">ASSISTA</h1>
                     <h2 class="titulo-destaque">{{ s.nome }}</h2>
