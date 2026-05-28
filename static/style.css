@@ -384,18 +384,6 @@ main {
     padding: 20px;
 }
 
-/* Seleciona todas as imagens dentro de qualquer container de card */
-.capa-container img, 
-.bloco-serie img, 
-.capa-img {
-    border-radius: 8px !important; /* Força o arredondamento em todos */
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border: none !important; /* Remove qualquer borda indesejada */
-}
-
 .capa-img {
     width: 100%;
     height: 100%;
