@@ -33,6 +33,14 @@
             <span style="color: #e50914; font-weight: bold;">{{ episodios|length }} Episódios</span>
         </div>
 
+        <div style="background: #181818; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+            <h3 style="margin-top: 0; color: #fff;">Adicionar novo episódio</h3>
+            <form action="/adicionar_episodio/{{ nome_serie }}" method="POST" enctype="multipart/form-data" style="display: flex; gap: 10px; align-items: center;">
+                <input type="file" name="novo_episodio" accept="video/*" required style="color: #ccc;">
+                <button type="submit" style="background: #e50914; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold;">ENVIAR</button>
+            </form>
+        </div>
+
         <div class="lista-episodios">
             {% for ep in episodios %}
             <div class="item-episodio" id="ep-{{ loop.index }}">
@@ -42,11 +50,11 @@
                 </div>
                 
                 <div class="controles-ep">
-                    <a href="{{ url_for('ver_video', nome_serie=nome, video_atual=ep) }}" class="btn-play-ep">
+                    <a href="{{ url_for('ver_video', nome_serie=nome_serie, video_atual=ep) }}" class="btn-play-ep">
                         ▶ ASSISTIR
                     </a>
 
-                    <button class="btn-deletar-ep" onclick="confirmarExclusaoEp('{{ nome }}', '{{ ep }}', '{{ loop.index }}')">
+                    <button class="btn-deletar-ep" onclick="confirmarExclusaoEp('{{ nome_serie }}', '{{ ep }}', '{{ loop.index }}')">
                         <svg viewBox="0 0 24 24" width="18" height="18">
                             <path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19V4M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
                         </svg>
@@ -54,7 +62,7 @@
                 </div>
             </div>
             {% endfor %}
-            </div>
+        </div>
     </div>
     <script>
         // Seu script de exclusão (Mantido inalterado)
