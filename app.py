@@ -427,8 +427,8 @@ def adicionar_episodio(nome_serie):
     
     arquivo = request.files.get('novo_episodio')
     if arquivo and arquivo.filename != '':
+        # Garante que o nome da pasta e do arquivo sejam seguros
         pasta_serie = os.path.join(app.config['UPLOAD_FOLDER'], nome_serie)
-        # Salva o arquivo direto na pasta já existente
         caminho_salvo = os.path.join(pasta_serie, secure_filename(arquivo.filename))
         arquivo.save(caminho_salvo)
         
