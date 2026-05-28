@@ -408,20 +408,40 @@ def deletar_capa_filme(id_filme):
     cursor.execute("SELECT capa FROM series WHERE id = %s", (id_filme,))
     resultado = cursor.fetchone()
     
-    if resultado:
+    # Se resultado for None ou capa for None, apenas ignoramos ou avisamos
+    if resultado and resultado[0]: 
         nome_capa = resultado[0]
         caminho_capa = os.path.join(app.config['THUMBNAIL_FOLDER'], nome_capa)
         if os.path.exists(caminho_capa):
             os.remove(caminho_capa)
-        cursor.execute("UPDATE series SET capa = NULL WHERE id = %s", (id_filme,))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return jsonify({"status": "sucesso"}), 200
     
+    cursor.execute("UPDATE series SET capa = NULL WHERE id = %s", (id_filme,))
+    conn.commit()
     cursor.close()
     conn.close()
-    return jsonify({"status": "erro", "mensagem": "Capa não encontrada"}), 404
+    return jsonify({"status": "sucesso"}), 200
+
+@app.route('/deletar_serie_completa/<int:id_filme>', methods=['DELETE'])
+def deletar_serie_completa(id_filme):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT arquivo FROM series WHERE id = %s", (id_filme,))
+    resultado = cursor.fetchone()
+    
+    if resultado:
+        nome_pasta = resultado[0]
+        caminho_pasta = os.path.join(app.config['UPLOAD_FOLDER'], nome_pasta)
+        
+        # Deleta a pasta inteira e tudo dentro dela
+        if os.path.exists(caminho_pasta):
+            shutil.rmtree(caminho_pasta)
+            
+        cursor.execute("DELETE FROM series WHERE id = %s", (id_filme,))
+        conn.commit()
+        
+    cursor.close()
+    conn.close()
+    return jsonify({"status": "sucesso"}), 200
 
 # Rota para deletar episódios (a que você precisava)
 @app.route('/deletar_episodio/<nome_serie>/<nome_episodio>', methods=['DELETE'])
