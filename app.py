@@ -14,6 +14,9 @@ from telegram import Bot
 import asyncio
 import yt_dlp
 import re
+import time
+def motor_de_importacao(...):
+    time.sleep(2)
 
 app = Flask(__name__)
 app.secret_key = 'pobreflix_chave_secreta_super_segura'
@@ -199,66 +202,28 @@ def sair_perfil():
 
 @app.route('/')
 def index():
-    if 'conta_id' not in session:
-        return redirect(url_for('login'))
-    if 'usuario_logado' not in session:
-        return redirect(url_for('gerenciar_perfis'))
+    if 'conta_id' not in session or 'usuario_logado' not in session: return redirect(url_for('login'))
 
     conn = get_db_connection()
-    # Usando RealDictCursor para simular o comportamento de dicionário do sqlite3.Row
     cursor = conn.cursor(cursor_factory=RealDictCursor)
-    
     cursor.execute('SELECT id FROM usuarios WHERE nome = %s AND conta_id = %s', (session['usuario_logado'], session['conta_id']))
     perfil_atual = cursor.fetchone()
     
     if not perfil_atual:
-        cursor.close()
-        conn.close()
+        cursor.close(); conn.close()
         return redirect(url_for('gerenciar_perfis'))
         
     usuario_id = perfil_atual['id']
-
-    # Algoritmo de recomendação
-    cursor.execute('''
-        SELECT classificacao FROM series 
-        WHERE usuario_id = %s AND classificacao IS NOT NULL AND classificacao != ''
-        GROUP BY classificacao 
-        ORDER BY COUNT(classificacao) DESC 
-        LIMIT 1
-    ''', (usuario_id,))
-    
-    genero_favorito = cursor.fetchone()
-    videos_recomendados = []
-
-    if genero_favorito:
-        cursor.execute('''
-            SELECT * FROM feed_publico 
-            WHERE descricao LIKE %s AND autor_id != %s 
-            ORDER BY RANDOM() LIMIT 4
-        ''', (f"%{genero_favorito['classificacao']}%", session['conta_id']))
-        videos_recomendados = cursor.fetchall()
-    
-    if not videos_recomendados:
-        cursor.execute('SELECT * FROM feed_publico WHERE autor_id != %s ORDER BY RANDOM() LIMIT 4', (session['conta_id'],))
-        videos_recomendados = cursor.fetchall()
-
-    # Catálogo offline do usuário
     cursor.execute('SELECT * FROM series WHERE usuario_id = %s', (usuario_id,))
     series_cruas = cursor.fetchall()
-    cursor.close()
-    conn.close()
+    cursor.close(); conn.close()
 
-    lista_processada = []
     lista_processada = []
     for s in series_cruas:
         item = dict(s)
-        
-        if not item.get('capa') or item['capa'] == 'None':
-            item['capa'] = 'default.jpg'
+        if not item.get('capa') or item['capa'] == 'None': item['capa'] = 'default.jpg'
         
         caminho_pasta = os.path.join(app.config['UPLOAD_FOLDER'], item['arquivo'])
-        # ... (seu resto de código aqui permanece igual)
-        lista_processada.append(item)
         if os.path.isdir(caminho_pasta):
             arquivos = sorted([f for f in os.listdir(caminho_pasta) if f.lower().endswith(('.mp4', '.mkv', '.webm'))])
             if arquivos:
@@ -270,12 +235,11 @@ def index():
         else:
             item['eh_video_unico'] = True
             item['primeiro_video'] = item['arquivo']
+        
+        # AQUI FOI CORRIGIDO: Apenas um append
         lista_processada.append(item)
 
-    # Convertendo objetos de recomendação para dicionários normais para o template
-    recomendados_processados = [dict(v) for v in videos_recomendados]
-
-    return render_template('index.html', series=lista_processada, recomendados=recomendados_processados)
+    return render_template('index.html', series=lista_processada)
 
 def gerar_thumbnail(caminho_video, caminho_saida):
     cap = cv2.VideoCapture(caminho_video)
@@ -341,6 +305,10 @@ def adicionar():
     nome_seguro = secure_filename(nome.lower().replace(" ", "_"))
     caminho_db_capa = f"{nome_seguro}.jpg"
     pasta_final = os.path.join(app.config['UPLOAD_FOLDER'], nome_seguro)
+
+    if os.path.exists(pasta_final):
+        shutil.rmtree(pasta_final)
+    
     os.makedirs(pasta_final, exist_ok=True)
     
     extensao = arquivo.filename.rsplit('.', 1)[-1].lower()
@@ -400,6 +368,22 @@ def adicionar():
 
     return redirect('/')
 
+@app.route('/deletar_serie_completa/<int:id_filme>', methods=['DELETE'])
+def deletar_serie_completa(id_filme):
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute("SELECT arquivo FROM series WHERE id = %s", (id_filme,))
+    resultado = cursor.fetchone()
+    
+    if resultado:
+        caminho_pasta = os.path.join(app.config['UPLOAD_FOLDER'], resultado['arquivo'])
+        if os.path.exists(caminho_pasta): shutil.rmtree(caminho_pasta)
+        cursor.execute("DELETE FROM series WHERE id = %s", (id_filme,))
+        conn.commit()
+        
+    cursor.close(); conn.close()
+    return jsonify({"status": "sucesso"}), 200
+
 # Rota para deletar apenas a capa (para o erro 404 de /deletar_capa_filme/2)
 @app.route('/deletar_capa_filme/<int:id_filme>', methods=['DELETE'])
 def deletar_capa_filme(id_filme):
@@ -417,30 +401,6 @@ def deletar_capa_filme(id_filme):
     
     cursor.execute("UPDATE series SET capa = NULL WHERE id = %s", (id_filme,))
     conn.commit()
-    cursor.close()
-    conn.close()
-    return jsonify({"status": "sucesso"}), 200
-
-@app.route('/deletar_serie_completa/<int:id_filme>', methods=['DELETE'])
-def deletar_serie_completa(id_filme):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    # Pega o nome da pasta antes de deletar
-    cursor.execute("SELECT arquivo FROM series WHERE id = %s", (id_filme,))
-    resultado = cursor.fetchone()
-    
-    if resultado:
-        nome_pasta = resultado['arquivo'] # Nome da pasta no /static/videos
-        caminho_pasta = os.path.join(app.config['UPLOAD_FOLDER'], nome_pasta)
-        
-        # Deleta a pasta física e todo o conteúdo (vídeos)
-        if os.path.exists(caminho_pasta):
-            shutil.rmtree(caminho_pasta)
-            
-        # Deleta a entrada no banco
-        cursor.execute("DELETE FROM series WHERE id = %s", (id_filme,))
-        conn.commit()
-        
     cursor.close()
     conn.close()
     return jsonify({"status": "sucesso"}), 200
