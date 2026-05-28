@@ -347,24 +347,23 @@
         }
 
         function deletarConteudoLocal(id) {
-            if (confirm("Deseja realmente apagar esta mídia e remover todos os arquivos de vídeo do HD?")) {
-                fetch(`/deletar_capa_filme/${id}`, { 
+            if (confirm("Deseja apagar TUDO (vídeos e capa) do servidor?")) {
+                // MUDAMOS A ROTA AQUI PARA A NOVA FUNÇÃO COMPLETA
+                fetch(`/deletar_serie_completa/${id}`, { 
                     method: 'DELETE' 
                 })
                 .then(response => {
                     if (response.ok) {
                         const elemento = document.getElementById(`serie-${id}`);
                         if (elemento) {
-                            elemento.style.transition = "0.3s";
-                            elemento.style.opacity = "0";
-                            elemento.style.transform = "scale(0.8)";
-                            setTimeout(() => elemento.remove(), 300);
+                            elemento.remove();
+                            location.reload(); // Recarrega para limpar a lista
                         }
                     } else {
-                        alert("Erro ao excluir os arquivos físicos do servidor.");
+                        alert("Erro ao excluir os arquivos físicos.");
                     }
                 })
-                .catch(error => console.error('Erro na requisição:', error));
+                .catch(error => console.error('Erro:', error));
             }
         }
 
