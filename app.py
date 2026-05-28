@@ -425,17 +425,19 @@ def deletar_capa_filme(id_filme):
 def deletar_serie_completa(id_filme):
     conn = get_db_connection()
     cursor = conn.cursor()
+    # Pega o nome da pasta antes de deletar
     cursor.execute("SELECT arquivo FROM series WHERE id = %s", (id_filme,))
     resultado = cursor.fetchone()
     
     if resultado:
-        nome_pasta = resultado[0]
+        nome_pasta = resultado['arquivo'] # Nome da pasta no /static/videos
         caminho_pasta = os.path.join(app.config['UPLOAD_FOLDER'], nome_pasta)
         
-        # Deleta a pasta inteira e tudo dentro dela
+        # Deleta a pasta física e todo o conteúdo (vídeos)
         if os.path.exists(caminho_pasta):
             shutil.rmtree(caminho_pasta)
             
+        # Deleta a entrada no banco
         cursor.execute("DELETE FROM series WHERE id = %s", (id_filme,))
         conn.commit()
         
