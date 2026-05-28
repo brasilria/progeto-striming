@@ -393,51 +393,41 @@ def adicionar():
 
     return redirect('/')
 
-@app.route('/deletar_filme_local/<int:id_filme>', methods=['POST'])
-def deletar_filme_local(id_filme):
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT arquivo, capa FROM series WHERE id = %s", (id_filme,))
-        item = cursor.fetchone()
-
-        if item:
-            nome_pasta, nome_capa = item
-            caminho_pasta = os.path.join(app.config['UPLOAD_FOLDER'], nome_pasta)
-            caminho_capa = os.path.join(app.config['THUMBNAIL_FOLDER'], nome_capa)
-
-            if os.path.exists(caminho_pasta): shutil.rmtree(caminho_pasta)
-            if os.path.exists(caminho_capa): os.remove(caminho_capa)
-
-            cursor.execute("DELETE FROM series WHERE id = %s", (id_filme,))
-            conn.commit()
-            cursor.close()
-            conn.close()
-            return jsonify({"status": "sucesso"}), 200
-            
+# Rota para deletar apenas a capa (para o erro 404 de /deletar_capa_filme/2)
+@app.route('/deletar_capa_filme/<int:id_filme>', methods=['DELETE'])
+def deletar_capa_filme(id_filme):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT capa FROM series WHERE id = %s", (id_filme,))
+    resultado = cursor.fetchone()
+    
+    if resultado:
+        nome_capa = resultado[0]
+        caminho_capa = os.path.join(app.config['THUMBNAIL_FOLDER'], nome_capa)
+        if os.path.exists(caminho_capa):
+            os.remove(caminho_capa)
+        cursor.execute("UPDATE series SET capa = NULL WHERE id = %s", (id_filme,))
+        conn.commit()
         cursor.close()
         conn.close()
-        return jsonify({"status": "erro"}), 404
-    except Exception as e:
-        return jsonify({"status": "erro", "mensagem": str(e)}), 500
+        return jsonify({"status": "sucesso"}), 200
+    
+    cursor.close()
+    conn.close()
+    return jsonify({"status": "erro", "mensagem": "Capa não encontrada"}), 404
 
+# Rota para deletar episódios (a que você precisava)
 @app.route('/deletar_episodio/<nome_serie>/<nome_episodio>', methods=['DELETE'])
 def deletar_episodio(nome_serie, nome_episodio):
-    if 'conta_id' not in session:
-        return jsonify({"status": "erro", "mensagem": "Não autorizado"}), 401
+    if 'conta_id' not in session: return jsonify({"status": "erro"}), 401
     
-    # Monta o caminho real do arquivo dentro da pasta da série
     pasta_serie = os.path.join(app.config['UPLOAD_FOLDER'], nome_serie)
     caminho_arquivo = os.path.join(pasta_serie, nome_episodio)
     
-    try:
-        if os.path.exists(caminho_arquivo):
-            os.remove(caminho_arquivo)
-            return jsonify({"status": "sucesso"}), 200
-        else:
-            return jsonify({"status": "erro", "mensagem": "Arquivo não encontrado"}), 404
-    except Exception as e:
-        return jsonify({"status": "erro", "mensagem": str(e)}), 500
+    if os.path.exists(caminho_arquivo):
+        os.remove(caminho_arquivo)
+        return jsonify({"status": "sucesso"}), 200
+    return jsonify({"status": "erro", "mensagem": "Arquivo não encontrado"}), 404
 
 @app.route('/adicionar_episodio/<nome_serie>', methods=['POST'])
 def adicionar_episodio(nome_serie):
