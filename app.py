@@ -249,9 +249,16 @@ def index():
     conn.close()
 
     lista_processada = []
+    lista_processada = []
     for s in series_cruas:
         item = dict(s)
+        
+        if not item.get('capa') or item['capa'] == 'None':
+            item['capa'] = 'default.jpg'
+        
         caminho_pasta = os.path.join(app.config['UPLOAD_FOLDER'], item['arquivo'])
+        # ... (seu resto de código aqui permanece igual)
+        lista_processada.append(item)
         if os.path.isdir(caminho_pasta):
             arquivos = sorted([f for f in os.listdir(caminho_pasta) if f.lower().endswith(('.mp4', '.mkv', '.webm'))])
             if arquivos:
