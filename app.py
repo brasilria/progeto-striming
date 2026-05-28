@@ -421,6 +421,24 @@ def deletar_filme_local(id_filme):
     except Exception as e:
         return jsonify({"status": "erro", "mensagem": str(e)}), 500
 
+@app.route('/deletar_episodio/<nome_serie>/<nome_episodio>', methods=['DELETE'])
+def deletar_episodio(nome_serie, nome_episodio):
+    if 'conta_id' not in session:
+        return jsonify({"status": "erro", "mensagem": "Não autorizado"}), 401
+    
+    # Monta o caminho real do arquivo dentro da pasta da série
+    pasta_serie = os.path.join(app.config['UPLOAD_FOLDER'], nome_serie)
+    caminho_arquivo = os.path.join(pasta_serie, nome_episodio)
+    
+    try:
+        if os.path.exists(caminho_arquivo):
+            os.remove(caminho_arquivo)
+            return jsonify({"status": "sucesso"}), 200
+        else:
+            return jsonify({"status": "erro", "mensagem": "Arquivo não encontrado"}), 404
+    except Exception as e:
+        return jsonify({"status": "erro", "mensagem": str(e)}), 500
+
 @app.route('/adicionar_episodio/<nome_serie>', methods=['POST'])
 def adicionar_episodio(nome_serie):
     if 'conta_id' not in session: return redirect(url_for('login'))
