@@ -421,6 +421,19 @@ def deletar_filme_local(id_filme):
     except Exception as e:
         return jsonify({"status": "erro", "mensagem": str(e)}), 500
 
+@app.route('/adicionar_episodio/<nome_serie>', methods=['POST'])
+def adicionar_episodio(nome_serie):
+    if 'conta_id' not in session: return redirect(url_for('login'))
+    
+    arquivo = request.files.get('novo_episodio')
+    if arquivo and arquivo.filename != '':
+        pasta_serie = os.path.join(app.config['UPLOAD_FOLDER'], nome_serie)
+        # Salva o arquivo direto na pasta já existente
+        caminho_salvo = os.path.join(pasta_serie, secure_filename(arquivo.filename))
+        arquivo.save(caminho_salvo)
+        
+    return redirect(url_for('ver_serie', nome_serie=nome_serie))
+
 @app.route('/serie/<nome_serie>')
 def ver_serie(nome_serie):
     caminho_completo = os.path.join(app.config['UPLOAD_FOLDER'], nome_serie)
