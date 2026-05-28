@@ -286,7 +286,8 @@
             {% for serie in series %} 
                 <div class="bloco-serie" id="serie-{{ serie.id }}">
                     <div class="capa-container">
-                        <img src="{{ url_for('static', filename='capas/' + serie.capa) }}" class="capa-img" alt="Capa de {{ serie.nome }}">
+                        <img src="{{ url_for('static', filename='capas/' + (serie.capa if serie.capa and serie.capa != 'None' else 'default.jpg')) }}" 
+                             class="capa-img" alt="Capa de {{ serie.nome }}">
                         
                         <button class="btn-deletar-card" onclick="deletarConteudoLocal('{{ serie.id }}')" title="Excluir Conteúdo do Servidor">
                             &times;
