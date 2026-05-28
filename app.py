@@ -14,9 +14,6 @@ from telegram import Bot
 import asyncio
 import yt_dlp
 import re
-import time
-def motor_de_importacao(...):
-    time.sleep(2)
 
 app = Flask(__name__)
 app.secret_key = 'pobreflix_chave_secreta_super_segura'
