@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pobreflix - Quem está assistindo?</title>
+    <style>
+        body {
+            background-color: #141414;
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        h1 {
+            font-size: 3.5vw;
+            font-weight: unset;
+            margin-bottom: 30px;
+        }
+        .perfis-container {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 40px;
+        }
+        .perfil-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #222;
+        }
+        .perfil-card {
+            text-align: center;
+            text-decoration: none;
+            color: gray;
+            transition: transform 0.2s;
+        }
+        .perfil-card:hover {
+            transform: scale(1.05);
+        }
+        .avatar {
+            width: 10vw;
+            height: 10vw;
+            width: 120px;
+            height: 120px;
+            background-color: #e50914;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 50px;
+            color: white;
+            font-weight: bold;
+            border: 3px solid transparent;
+        }
+        .perfil-card:hover .avatar {
+            border: 3px solid white;
+        }
+        .nome {
+            margin-top: 12px;
+            font-size: 16px;
+            display: block;
+            color: #aaa;
+            font-weight: bold;
+        }
+        .perfil-card:hover .nome {
+            color: white;
+        }
+        .btn-deletar-perfil {
+            background: none;
+            border: none;
+            color: #ff4d4d;
+            cursor: pointer;
+            font-size: 13px;
+            margin-top: 10px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .btn-deletar-perfil:hover {
+            background: rgba(255, 77, 77, 0.15);
+            color: #ff3333;
+        }
+        .form-criar {
+            margin-top: 20px;
+            background: #1f1f1f;
+            padding: 20px;
+            border-radius: 6px;
+            border: 1px solid #333;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        .form-criar input {
+            padding: 10px;
+            border: 1px solid #444;
+            background: #141414;
+            color: white;
+            border-radius: 4px;
+            margin-right: 8px;
+            outline: none;
+            font-size: 14px;
+        }
+        .form-criar input:focus {
+            border-color: #e50914;
+        }
+        .form-criar button {
+            padding: 10px 20px;
+            background: #e50914;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        .form-criar button:hover {
+            background: #b80710;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Quem está assistindo?</h1>
+
+    <div class="perfis-container">
+        {% for perfil in perfis %}
+            <div class="perfil-wrapper">
+                <a href="/selecionar_perfil/{{ perfil[0] }}" class="perfil-card">
+                    <div class="avatar">{{ perfil[1][0].upper() }}</div>
+                    <span class="nome">{{ perfil[1] }}</span>
+                </a>
+                
+                <form action="/deletar_perfil/{{ perfil[0] }}" method="POST" onsubmit="return confirmarRemocao('{{ perfil[1] }}');">
+                    <button type="submit" class="btn-deletar-perfil">
+                        Remover Perfil 🗑️
+                    </button>
+                </form>
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="form-criar">
+        <form action="/criar_perfil" method="POST">
+            <input type="text" name="nome" placeholder="Nome do novo perfil" required maxlength="15">
+            <button type="submit">Adicionar Perfil</button>
+        </form>
+    </div>
+
+    <script>
+    function confirmarRemocao(nomePerfil) {
+        // Alerta nativo solicitando a confirmação específica com o nome do perfil
+        return confirm("Tem certeza de que deseja remover o perfil '" + nomePerfil + "'? Esta ação não pode ser desfeita.");
+    }
+    </script>
+
+</body>
+</html>

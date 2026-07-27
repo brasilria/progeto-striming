@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ nome }} - Pobreflix</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* Seus estilos específicos (Mantidos inalterados) */
+        .container-episodios { padding: 40px 5%; max-width: 1000px; margin: 0 auto; }
+        .header-serie { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
+        .header-serie h1 { margin: 0; font-size: 2.5rem; color: #fff; }
+        .lista-episodios { display: flex; flex-direction: column; gap: 8px; }
+        .item-episodio { background: #181818; padding: 15px 25px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; transition: background 0.3s, transform 0.2s; border-left: 4px solid transparent; text-decoration: none; color: inherit; }
+        .item-episodio:hover { background: #222; transform: scale(1.01); border-left: 4px solid #e50914; }
+        .nome-ep { font-weight: bold; color: #e5e5e5; font-size: 1.1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 20px; }
+        .controles-ep { display: flex; align-items: center; gap: 15px; }
+        .btn-play-ep { background: #e50914; color: white; text-decoration: none; padding: 10px 20px; border-radius: 4px; font-weight: bold; font-size: 0.9rem; transition: 0.3s; white-space: nowrap; }
+        .btn-play-ep:hover { background: #ff0000; box-shadow: 0 0 10px rgba(229, 9, 20, 0.4); }
+        .btn-deletar-ep { background: rgba(255,255,255,0.1); color: #888; border: none; padding: 8px; border-radius: 50%; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center; }
+        .btn-deletar-ep:hover { background: rgba(229, 9, 20, 0.2); color: #e50914; transform: scale(1.1); }
+        .voltar-link { color: #aaa; text-decoration: none; display: inline-block; margin-bottom: 20px; transition: color 0.3s; }
+        .voltar-link:hover { color: #fff; }
+    </style>
+</head>
+<body>
+
+    <div class="container-episodios">
+        <a href="/" class="voltar-link">← Voltar para a vitrine</a>
+        
+        <div class="header-serie">
+            <h1>{{ nome }}</h1>
+            <span style="color: #e50914; font-weight: bold;">{{ episodios|length }} Episódios</span>
+        </div>
+
+        <div class="lista-episodios">
+            {% for ep in episodios %}
+            <div class="item-episodio" id="ep-{{ loop.index }}">
+                <div class="nome-ep">
+                    <span style="color: #666; margin-right: 10px;">{{ loop.index }}</span> 
+                    {{ ep }}
+                </div>
+                
+                <div class="controles-ep">
+                    <a href="{{ url_for('ver_video', nome_serie=nome, video_atual=ep) }}" class="btn-play-ep">
+                        ▶ ASSISTIR
+                    </a>
+
+                    <button class="btn-deletar-ep" onclick="confirmarExclusaoEp('{{ nome }}', '{{ ep }}', '{{ loop.index }}')">
+                        <svg viewBox="0 0 24 24" width="18" height="18">
+                            <path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19V4M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+            </div>
+    </div>
+    <script>
+        // Seu script de exclusão (Mantido inalterado)
+        function confirmarExclusaoEp(serie, episodio, index) {
+            if (confirm(`Tem certeza que deseja deletar o episódio "${episodio}"?`)) {
+                fetch(`/deletar_episodio/${serie}/${episodio}`, { method: 'DELETE' })
+                .then(response => {
+                    if (response.ok) {
+                        const card = document.getElementById(`ep-${index}`);
+                        card.style.opacity = "0";
+                        card.style.transform = "translateX(50px)";
+                        setTimeout(() => card.remove(), 300);
+                    } else {
+                        alert("Erro ao deletar o episódio físico.");
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+</html>

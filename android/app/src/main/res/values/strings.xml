@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Pobreflix</string>
+    <string name="title_activity_main">Pobreflix</string>
+    <string name="package_name">com.pobreflix.app</string>
+    <string name="custom_url_scheme">com.pobreflix.app</string>
+</resources>
