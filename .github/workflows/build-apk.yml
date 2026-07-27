@@ -15,10 +15,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
 
-      - name: Instalar dependências e o Capacitor
+      - name: Instalar Dependências
+        run: npm install
+
+      - name: Adicionar e Sincronizar Capacitor Android
         run: |
-          npm install
           npx cap add android || true
           npx cap sync android
 
@@ -35,7 +38,7 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew assembleDebug
 
       - name: Salvar o arquivo APK gerado
         uses: actions/upload-artifact@v4
