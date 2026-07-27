@@ -1,0 +1,40 @@
+name: Gerar APK Android
+
+on:
+  push:
+    branches: [ "main" ] # (Se a sua branch principal for master, mude aqui)
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clonar Repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar dependências e o Capacitor
+        run: |
+          npm install
+          npx cap sync android
+
+      - name: Configurar Java (Necessário para compilar o Android)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Compilar o APK com Gradle
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Salvar o arquivo APK gerado
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
