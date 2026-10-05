@@ -106,6 +106,8 @@ def login():
     if request.method == 'POST':
         email = request.form.get('email')
         senha = request.form.get('senha')
+
+        print(f"Tentando logar com: E-mail={email}, Senha={senha}")
         
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -113,6 +115,8 @@ def login():
         # Mudei de %s para ? para funcionar perfeitamente com SQLite
         cursor.execute('SELECT id, email FROM contas WHERE email = ? AND senha = ?', (email, senha))
         conta = cursor.fetchone()
+
+        print(f"Resultado do banco: {conta}")
         
         conn.close()
         
