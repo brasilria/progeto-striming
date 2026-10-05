@@ -109,18 +109,19 @@ def login():
         
         conn = get_db_connection()
         cursor = conn.cursor()
-        # Modificado de ? para %s por conta do PostgreSQL
-        cursor.execute('SELECT id, email FROM contas WHERE email = %s AND senha = %s', (email, senha))
+        
+        # Mudei de %s para ? para funcionar perfeitamente com SQLite
+        cursor.execute('SELECT id, email FROM contas WHERE email = ? AND senha = ?', (email, senha))
         conta = cursor.fetchone()
-        cursor.close()
+        
         conn.close()
         
         if conta:
-            session['conta_id'] = conta[0]
-            session['conta_email'] = conta[1]
-            return redirect(url_for('gerenciar_perfis'))
+            # Se for SQLite Row, acessamos por índice ou chave, se for dict/tuple ajustamos
+            session['conta_id'] = conta['id'] if isinstance(conta, sqlite3.Row) else conta[0]
+            return redirect(url_for('index')) # ou a sua rota principal
         else:
-            return "E-mail ou senha incorretos!", 401
+            return render_template('login.html', erro="E-mail ou senha incorretos.")
             
     return render_template('login.html')
 
@@ -130,18 +131,20 @@ def cadastro():
         email = request.form.get('email')
         senha = request.form.get('senha')
         
-        if email and senha:
-            try:
-                conn = get_db_connection()
-                cursor = conn.cursor()
-                cursor.execute('INSERT INTO contas (email, senha) VALUES (%s, %s)', (email, senha))
-                conn.commit()
-                cursor.close()
-                conn.close()
-                return "Conta criada com sucesso! <a href='/login'>Clique aqui para logar</a>"
-            except psycopg2.errors.UniqueViolation:
-                return "Este e-mail já está cadastrado!", 400
-                
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            # Mudei de %s para ?
+            cursor.execute('INSERT INTO contas (email, senha) VALUES (?, ?)', (email, senha))
+            conn.commit()
+            conn.close()
+            return redirect(url_for('login'))
+            
+        except Exception as e:
+            # Tratamento genérico de erro para SQLite (ex: email duplicado)
+            return render_template('cadastro.html', erro="Este e-mail já está cadastrado ou ocorreu um erro.")
+            
     return render_template('cadastro.html')
 
 @app.route('/logout_conta')
