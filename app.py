@@ -1,6 +1,5 @@
 from flask import Flask, render_template, request, redirect, make_response, url_for, jsonify, send_from_directory, session
-import psycopg2
-from psycopg2.extras import RealDictCursor
+import sqlite3
 import os
 import zipfile
 import cv2
@@ -25,23 +24,28 @@ os.makedirs(app.config['THUMBNAIL_FOLDER'], exist_ok=True)
 
 def get_db_connection():
     db_url = os.environ.get('DATABASE_URL')
-    if not db_url:
-        raise Exception("A variável de ambiente DATABASE_URL não foi configurada no Render!")
     
-    # Corrige variações automáticas de protocolo comuns no Render
-    if db_url.startswith("postgres://"):
-        db_url = db_url.replace("postgres://", "postgresql://", 1)
-        
-    return psycopg2.connect(db_url)
+    # Se houver DATABASE_URL configurada como Postgres, usa psycopg2
+    if db_url and db_url.startswith("postgres"):
+        import psycopg2
+        from psycopg2.extras import RealDictCursor
+        if db_url.startswith("postgres://"):
+            db_url = db_url.replace("postgres://", "postgresql://", 1)
+        return psycopg2.connect(db_url)
+    else:
+        # Caso contrário, usa o SQLite local (zdatabase.db)
+        conn = sqlite3.connect('zdatabase.db')
+        conn.row_factory = sqlite3.Row
+        return conn
 
 def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Criação das tabelas no padrão PostgreSQL
+    # Criação das tabelas compatíveis com SQLite
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS contas (
-            id SERIAL PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT NOT NULL UNIQUE,
             senha TEXT NOT NULL
         )
@@ -49,7 +53,7 @@ def init_db():
     
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS usuarios (
-            id SERIAL PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             nome TEXT NOT NULL,
             conta_id INTEGER,
             FOREIGN KEY (conta_id) REFERENCES contas(id),
@@ -59,7 +63,7 @@ def init_db():
     
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS series (
-            id SERIAL PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             nome TEXT NOT NULL,
             descricao TEXT,
             arquivo TEXT,
@@ -75,7 +79,7 @@ def init_db():
     
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS feed_publico (
-            id SERIAL PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             titulo TEXT NOT NULL,
             descricao TEXT,
             url_video TEXT NOT NULL,
