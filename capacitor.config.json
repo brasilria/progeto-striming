@@ -1,5 +1,9 @@
 {
-  "appId": "com.pobreflix.app",
+  "appId": "com.exemplo.pobreflix",
   "appName": "Pobreflix",
-  "webDir": "www"
+  "webDir": "www",
+  "server": {
+    "url": "https://Pobreflix.onrender.com",
+    "cleartext": true
+  }
 }
