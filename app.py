@@ -22,10 +22,11 @@ app.config['THUMBNAIL_FOLDER'] = 'static/capas'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['THUMBNAIL_FOLDER'], exist_ok=True)
 
+def usando_postgres():
+    return bool(os.environ.get('DATABASE_URL') and os.environ.get('DATABASE_URL').startswith("postgres"))
+
 def get_db_connection():
     db_url = os.environ.get('DATABASE_URL')
-    
-    # Se houver DATABASE_URL configurada como Postgres, usa psycopg2
     if db_url and db_url.startswith("postgres"):
         import psycopg2
         from psycopg2.extras import RealDictCursor
@@ -33,16 +34,27 @@ def get_db_connection():
             db_url = db_url.replace("postgres://", "postgresql://", 1)
         return psycopg2.connect(db_url)
     else:
-        # Caso contrário, usa o SQLite local (zdatabase.db)
         conn = sqlite3.connect('zdatabase.db')
         conn.row_factory = sqlite3.Row
         return conn
+
+def executar_query(cursor, query, params=()):
+    """Converte automaticamente %s para ? se estiver usando SQLite"""
+    if not usando_postgres():
+        query = query.replace('%s', '?')
+    cursor.execute(query, params)
+
+def criar_cursor(conn):
+    if usando_postgres():
+        from psycopg2.extras import RealDictCursor
+        return conn.cursor(cursor_factory=RealDictCursor)
+    else:
+        return conn.cursor()
 
 def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Criação das tabelas compatíveis com SQLite
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS contas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -106,24 +118,19 @@ def login():
     if request.method == 'POST':
         email = request.form.get('email')
         senha = request.form.get('senha')
-
-        print(f"Tentando logar com: E-mail={email}, Senha={senha}")
         
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = criar_cursor(conn)
         
-        # Mudei de %s para ? para funcionar perfeitamente com SQLite
-        cursor.execute('SELECT id, email FROM contas WHERE email = ? AND senha = ?', (email, senha))
+        executar_query(cursor, 'SELECT id, email FROM contas WHERE email = %s AND senha = %s', (email, senha))
         conta = cursor.fetchone()
-
-        print(f"Resultado do banco: {conta}")
         
         conn.close()
         
         if conta:
-            # Se for SQLite Row, acessamos por índice ou chave, se for dict/tuple ajustamos
-            session['conta_id'] = conta['id'] if isinstance(conta, sqlite3.Row) else conta[0]
-            return redirect(url_for('index')) # ou a sua rota principal
+            session['conta_id'] = conta['id'] if not usando_postgres() else conta['id']
+            session['conta_email'] = email
+            return redirect(url_for('gerenciar_perfis'))
         else:
             return render_template('login.html', erro="E-mail ou senha incorretos.")
             
@@ -138,15 +145,11 @@ def cadastro():
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
-            # Mudei de %s para ?
-            cursor.execute('INSERT INTO contas (email, senha) VALUES (?, ?)', (email, senha))
+            executar_query(cursor, 'INSERT INTO contas (email, senha) VALUES (%s, %s)', (email, senha))
             conn.commit()
             conn.close()
             return redirect(url_for('login'))
-            
         except Exception as e:
-            # Tratamento genérico de erro para SQLite (ex: email duplicado)
             return render_template('cadastro.html', erro="Este e-mail já está cadastrado ou ocorreu um erro.")
             
     return render_template('cadastro.html')
@@ -162,8 +165,8 @@ def gerenciar_perfis():
         return redirect(url_for('login'))
         
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT id, nome, conta_id FROM usuarios WHERE conta_id = %s', (session['conta_id'],))
+    cursor = criar_cursor(conn)
+    executar_query(cursor, 'SELECT id, nome, conta_id FROM usuarios WHERE conta_id = %s', (session['conta_id'],))
     perfis = cursor.fetchall()
     cursor.close()
     conn.close()
@@ -180,9 +183,9 @@ def criar_perfil():
         conn = get_db_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute('INSERT INTO usuarios (nome, conta_id) VALUES (%s, %s)', (nome, session['conta_id']))
+            executar_query(cursor, 'INSERT INTO usuarios (nome, conta_id) VALUES (%s, %s)', (nome, session['conta_id']))
             conn.commit()
-        except psycopg2.errors.UniqueViolation:
+        except Exception:
             pass
         finally:
             cursor.close()
@@ -193,14 +196,14 @@ def criar_perfil():
 @app.route('/selecionar_perfil/<int:id>')
 def selecionar_perfil(id):
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT nome FROM usuarios WHERE id = %s AND conta_id = %s', (id, session.get('conta_id')))
+    cursor = criar_cursor(conn)
+    executar_query(cursor, 'SELECT nome FROM usuarios WHERE id = %s AND conta_id = %s', (id, session.get('conta_id')))
     user = cursor.fetchone()
     cursor.close()
     conn.close()
     
     if user:
-        session['usuario_logado'] = user[0] 
+        session['usuario_logado'] = user['nome'] if not usando_postgres() else user[0] 
     return redirect('/')
 
 @app.route('/sair_perfil')
@@ -210,26 +213,28 @@ def sair_perfil():
 
 @app.route('/')
 def index():
-    if 'conta_id' not in session or 'usuario_logado' not in session: return redirect(url_for('login'))
+    if 'conta_id' not in session or 'usuario_logado' not in session: 
+        return redirect(url_for('login'))
 
     conn = get_db_connection()
-    cursor = conn.cursor(cursor_factory=RealDictCursor)
-    cursor.execute('SELECT id FROM usuarios WHERE nome = %s AND conta_id = %s', (session['usuario_logado'], session['conta_id']))
+    cursor = criar_cursor(conn)
+    executar_query(cursor, 'SELECT id FROM usuarios WHERE nome = %s AND conta_id = %s', (session['usuario_logado'], session['conta_id']))
     perfil_atual = cursor.fetchone()
     
     if not perfil_atual:
         cursor.close(); conn.close()
         return redirect(url_for('gerenciar_perfis'))
         
-    usuario_id = perfil_atual['id']
-    cursor.execute('SELECT * FROM series WHERE usuario_id = %s', (usuario_id,))
+    usuario_id = perfil_atual['id'] if not usando_postgres() else perfil_atual['id']
+    executar_query(cursor, 'SELECT * FROM series WHERE usuario_id = %s', (usuario_id,))
     series_cruas = cursor.fetchall()
     cursor.close(); conn.close()
 
     lista_processada = []
     for s in series_cruas:
         item = dict(s)
-        if not item.get('capa') or item['capa'] == 'None': item['capa'] = 'default.jpg'
+        if not item.get('capa') or item['capa'] == 'None': 
+            item['capa'] = 'default.jpg'
         
         caminho_pasta = os.path.join(app.config['UPLOAD_FOLDER'], item['arquivo'])
         if os.path.isdir(caminho_pasta):
@@ -244,45 +249,9 @@ def index():
             item['eh_video_unico'] = True
             item['primeiro_video'] = item['arquivo']
         
-        # AQUI FOI CORRIGIDO: Apenas um append
         lista_processada.append(item)
 
     return render_template('index.html', series=lista_processada)
-
-def gerar_thumbnail(caminho_video, caminho_saida):
-    cap = cv2.VideoCapture(caminho_video)
-    if not cap.isOpened():
-        print(f"Erro: Não foi possível abrir o vídeo {caminho_video}")
-        return
-
-    cap.set(cv2.CAP_PROP_POS_MSEC, 5000)
-    sucesso, frame = cap.read()
-    
-    if not sucesso:
-        cap.set(cv2.CAP_PROP_POS_MSEC, 0)
-        sucesso, frame = cap.read()
-
-    if not sucesso:
-        cap.release()
-        return
-
-    h, w, _ = frame.shape
-    largura_alvo, altura_alvo = 1920, 1080
-    aspecto_alvo = largura_alvo / altura_alvo
-    aspecto_original = w / h
-
-    if aspecto_original > aspecto_alvo:
-        nova_largura = int(aspecto_alvo * h)
-        inicio_w = (w - nova_largura) // 2
-        frame_cortado = frame[:, inicio_w : inicio_w + nova_largura]
-    else:
-        nova_altura = int(w / aspecto_alvo)
-        inicio_h = (h - nova_altura) // 2
-        frame_cortado = frame[inicio_h : inicio_h + nova_altura, :]
-
-    frame_final = cv2.resize(frame_cortado, (largura_alvo, altura_alvo), interpolation=cv2.INTER_AREA)
-    cv2.imwrite(caminho_saida, frame_final, [int(cv2.IMWRITE_JPEG_QUALITY), 95])
-    cap.release()
 
 @app.route('/adicionar', methods=['POST'])
 def adicionar():
@@ -297,8 +266,8 @@ def adicionar():
         return "Nome e arquivo de vídeo/zip válido são obrigatórios", 400
 
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT id FROM usuarios WHERE nome = %s AND conta_id = %s', (session['usuario_logado'], session['conta_id']))
+    cursor = criar_cursor(conn)
+    executar_query(cursor, 'SELECT id FROM usuarios WHERE nome = %s AND conta_id = %s', (session['usuario_logado'], session['conta_id']))
     perfil_atual = cursor.fetchone()
     
     if not perfil_atual:
@@ -306,7 +275,7 @@ def adicionar():
         conn.close()
         return "Perfil inválido ou desconectado.", 400
     
-    usuario_id = perfil_atual[0]
+    usuario_id = perfil_atual['id'] if not usando_postgres() else perfil_atual[0]
     cursor.close()
     conn.close()
 
@@ -357,7 +326,7 @@ def adicionar():
 
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('''
+    executar_query(cursor, '''
         INSERT INTO series (nome, descricao, arquivo, capa, conta_id, usuario_id) 
         VALUES (%s, %s, %s, %s, %s, %s)
     ''', (nome, descricao, nome_seguro, caminho_db_capa, session['conta_id'], usuario_id))
@@ -379,41 +348,39 @@ def adicionar():
 @app.route('/deletar_serie_completa/<int:id_filme>', methods=['DELETE'])
 def deletar_serie_completa(id_filme):
     conn = get_db_connection()
-    cursor = conn.cursor(cursor_factory=RealDictCursor)
-    cursor.execute("SELECT arquivo FROM series WHERE id = %s", (id_filme,))
+    cursor = criar_cursor(conn)
+    executar_query(cursor, "SELECT arquivo FROM series WHERE id = %s", (id_filme,))
     resultado = cursor.fetchone()
     
     if resultado:
-        caminho_pasta = os.path.join(app.config['UPLOAD_FOLDER'], resultado['arquivo'])
+        arquivo_nome = resultado['arquivo'] if not usando_postgres() else resultado[0]
+        caminho_pasta = os.path.join(app.config['UPLOAD_FOLDER'], arquivo_nome)
         if os.path.exists(caminho_pasta): shutil.rmtree(caminho_pasta)
-        cursor.execute("DELETE FROM series WHERE id = %s", (id_filme,))
+        executar_query(cursor, "DELETE FROM series WHERE id = %s", (id_filme,))
         conn.commit()
         
     cursor.close(); conn.close()
     return jsonify({"status": "sucesso"}), 200
 
-# Rota para deletar apenas a capa (para o erro 404 de /deletar_capa_filme/2)
 @app.route('/deletar_capa_filme/<int:id_filme>', methods=['DELETE'])
 def deletar_capa_filme(id_filme):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT capa FROM series WHERE id = %s", (id_filme,))
+    executar_query(cursor, "SELECT capa FROM series WHERE id = %s", (id_filme,))
     resultado = cursor.fetchone()
     
-    # Se resultado for None ou capa for None, apenas ignoramos ou avisamos
     if resultado and resultado[0]: 
         nome_capa = resultado[0]
         caminho_capa = os.path.join(app.config['THUMBNAIL_FOLDER'], nome_capa)
         if os.path.exists(caminho_capa):
             os.remove(caminho_capa)
     
-    cursor.execute("UPDATE series SET capa = NULL WHERE id = %s", (id_filme,))
+    executar_query(cursor, "UPDATE series SET capa = NULL WHERE id = %s", (id_filme,))
     conn.commit()
     cursor.close()
     conn.close()
     return jsonify({"status": "sucesso"}), 200
 
-# Rota para deletar episódios (a que você precisava)
 @app.route('/deletar_episodio/<nome_serie>/<nome_episodio>', methods=['DELETE'])
 def deletar_episodio(nome_serie, nome_episodio):
     if 'conta_id' not in session: return jsonify({"status": "erro"}), 401
@@ -432,7 +399,6 @@ def adicionar_episodio(nome_serie):
     
     arquivo = request.files.get('novo_episodio')
     if arquivo and arquivo.filename != '':
-        # Garante que o nome da pasta e do arquivo sejam seguros
         pasta_serie = os.path.join(app.config['UPLOAD_FOLDER'], nome_serie)
         caminho_salvo = os.path.join(pasta_serie, secure_filename(arquivo.filename))
         arquivo.save(caminho_salvo)
@@ -478,10 +444,9 @@ def comunidade():
         return redirect(url_for('login'))
         
     conn = get_db_connection()
-    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor = criar_cursor(conn)
     
-    # Busca gênero favorito
-    cursor.execute('''
+    executar_query(cursor, '''
         SELECT classificacao FROM series 
         WHERE usuario_id = (SELECT id FROM usuarios WHERE nome = %s AND conta_id = %s LIMIT 1)
         AND classificacao IS NOT NULL AND classificacao != ''
@@ -494,15 +459,15 @@ def comunidade():
     videos_recomendados = []
 
     if genero_favorito:
-        cursor.execute('''
+        gen = genero_favorito['classificacao'] if not usando_postgres() else genero_favorito[0]
+        executar_query(cursor, '''
             SELECT * FROM feed_publico 
             WHERE (descricao LIKE %s OR titulo LIKE %s) AND autor_id != %s 
             ORDER BY RANDOM() LIMIT 4
-        ''', (f"%{genero_favorito['classificacao']}%", f"%{genero_favorito['classificacao']}%", session['conta_id']))
+        ''', (f"%{gen}%", f"%{gen}%", session['conta_id']))
         videos_recomendados = cursor.fetchall()
 
-    # Feed geral
-    cursor.execute('SELECT * FROM feed_publico ORDER BY id DESC')
+    executar_query(cursor, 'SELECT * FROM feed_publico ORDER BY id DESC')
     videos_brutos = cursor.fetchall()
     cursor.close()
     conn.close()
@@ -524,8 +489,8 @@ def meu_canal():
         return redirect(url_for('login'))
         
     conn = get_db_connection()
-    cursor = conn.cursor(cursor_factory=RealDictCursor)
-    cursor.execute('SELECT * FROM feed_publico WHERE autor_id = %s', (session['conta_id'],))
+    cursor = criar_cursor(conn)
+    executar_query(cursor, 'SELECT * FROM feed_publico WHERE autor_id = %s', (session['conta_id'],))
     meus_videos = cursor.fetchall()
     cursor.close()
     conn.close()
@@ -560,12 +525,10 @@ def publicar_bot():
 
         conn = get_db_connection()
         cursor = conn.cursor()
-        
-        cursor.execute('''
+        executar_query(cursor, '''
             INSERT INTO feed_publico (titulo, descricao, url_video, capa_url, autor_id, nome_autor) 
             VALUES (%s, %s, %s, %s, %s, %s)
         ''', (titulo, descricao, url_video, capa, id_autor, nome_autor))
-        
         conn.commit()
         cursor.close()
         conn.close()
@@ -578,13 +541,13 @@ def publicar_bot():
 @app.route('/assistir/<int:video_id>')
 def assistir(video_id):
     conn = get_db_connection()
-    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor = criar_cursor(conn)
     
-    cursor.execute('SELECT * FROM series WHERE id = %s', (video_id,))
+    executar_query(cursor, 'SELECT * FROM series WHERE id = %s', (video_id,))
     video = cursor.fetchone()
     
     if not video:
-        cursor.execute('SELECT * FROM feed_publico WHERE id = %s', (video_id,))
+        executar_query(cursor, 'SELECT * FROM feed_publico WHERE id = %s', (video_id,))
         video = cursor.fetchone()
             
     cursor.close()
@@ -613,8 +576,8 @@ def deletar_feed(video_id):
         return jsonify({"erro": "Não autorizado."}), 401
 
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT autor_id FROM feed_publico WHERE id = %s', (video_id,))
+    cursor = criar_cursor(conn)
+    executar_query(cursor, 'SELECT autor_id FROM feed_publico WHERE id = %s', (video_id,))
     video = cursor.fetchone()
 
     if not video:
@@ -622,12 +585,13 @@ def deletar_feed(video_id):
         conn.close()
         return jsonify({"erro": "Não encontrado."}), 404
 
-    if video[0] and int(video[0]) != int(session['conta_id']):
+    autor_id_val = video['autor_id'] if not usando_postgres() else video[0]
+    if autor_id_val and int(autor_id_val) != int(session['conta_id']):
         cursor.close()
         conn.close()
         return jsonify({"erro": "Você só pode deletar os seus próprios vídeos."}), 403
 
-    cursor.execute('DELETE FROM feed_publico WHERE id = %s', (video_id,))
+    executar_query(cursor, 'DELETE FROM feed_publico WHERE id = %s', (video_id,))
     conn.commit()
     cursor.close()
     conn.close()
@@ -640,22 +604,18 @@ def gerar_link_direto():
     if not url_original: 
         return jsonify({'success': False, 'error': 'URL ausente'}), 400
 
-    # Se for um link do YouTube, não usamos o yt-dlp (evita bloqueio de robô)
     if 'youtube.com' in url_original or 'youtu.be' in url_original:
         try:
-            # Extrai o ID do vídeo usando expressão regular (pega formatos comuns e shorts)
             video_id_match = re.search(r'(?:v=|\/v\/|youtu\.be\/|\/embed\/|\/shorts\/)([a-zA-Z0-9_-]{11})', url_original)
             if video_id_match:
                 video_id = video_id_match.group(1)
                 link_embed = f"https://www.youtube.com/embed/{video_id}?autoplay=1"
-                # Retornamos uma flag 'is_youtube': True para o HTML saber que deve abrir um iframe
                 return jsonify({'success': True, 'url': link_embed, 'is_youtube': True})
             else:
                 return jsonify({'success': False, 'error': 'ID do YouTube não identificado'}), 400
         except Exception as e:
             return jsonify({'success': False, 'error': f'Erro ao processar link do YouTube: {str(e)}'}), 500
 
-    # Se for link de outro servidor (como Telegram), mantém o comportamento normal com o yt-dlp
     ydl_opts = {'format': 'best[ext=mp4]/best', 'quiet': True, 'noplaylist': True}
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -670,15 +630,15 @@ def deletar_perfil(id):
         return redirect(url_for('login'))
         
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = criar_cursor(conn)
     
-    cursor.execute('SELECT nome FROM usuarios WHERE id = %s AND conta_id = %s', (id, session['conta_id']))
+    executar_query(cursor, 'SELECT nome FROM usuarios WHERE id = %s AND conta_id = %s', (id, session['conta_id']))
     perfil = cursor.fetchone()
     
     if perfil:
-        nome_perfil_deletado = perfil[0]
+        nome_perfil_deletado = perfil['nome'] if not usando_postgres() else perfil[0]
         
-        cursor.execute('DELETE FROM usuarios WHERE id = %s AND conta_id = %s', (id, session['conta_id']))
+        executar_query(cursor, 'DELETE FROM usuarios WHERE id = %s AND conta_id = %s', (id, session['conta_id']))
         conn.commit()
         
         if session.get('usuario_logado') == nome_perfil_deletado:
@@ -695,7 +655,7 @@ def deletar_video_comunidade(video_id):
         
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('DELETE FROM feed_publico WHERE id = %s AND autor_id = %s', (video_id, session['conta_id']))
+    executar_query(cursor, 'DELETE FROM feed_publico WHERE id = %s AND autor_id = %s', (video_id, session['conta_id']))
     conn.commit()
     cursor.close()
     conn.close()
