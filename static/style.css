@@ -305,12 +305,138 @@ header {
     line-height: 0; /* Garante que a altura da linha não desloque o texto */
 }
 
-/* 3. BANNER DE DESTAQUE (HERO) */
+/* --- CORREÇÃO DO BANNER RESPONSIVO (CELULAR E PC) --- */
 .banner-netflix {
-    height: 80vh; /* Ocupa 80% da tela */
     position: relative;
+    width: 100%;
+    height: 70vh; /* Altura ideal para celulares */
+    min-height: 450px;
     overflow: hidden;
-    background-color: #000;
+    margin-top: 60px; /* Compensa o header fixo */
+}
+
+#carrossel-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.slide-item {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-size: cover; /* Faz a imagem cobrir toda a área proporcionalmente */
+    background-position: center center; /* Centraliza a imagem para focar no miolo */
+    background-repeat: no-repeat;
+    opacity: 0;
+    transition: opacity 1s ease-in-out;
+    display: flex;
+    align-items: flex-end; /* Joga o conteúdo para baixo no celular, estilo streaming real */
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.slide-item.ativo {
+    opacity: 1;
+    z-index: 2;
+}
+
+/* Caixa de informações do Banner perfeitamente alinhada */
+.banner-info {
+    position: relative;
+    max-width: 100%;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    background: linear-gradient(to top, rgba(0,0,0,0.8), transparent); /* Gradiente para destacar o texto */
+    width: 100%;
+    padding: 20px 10px;
+    border-radius: 8px;
+}
+
+/* Tipografia ajustada para celular */
+.banner-info .logo-site {
+    font-size: 1.5rem;
+    color: #fff;
+    margin: 0;
+}
+
+.banner-info .titulo-destaque {
+    font-size: 2.2rem;
+    font-weight: bold;
+    color: #fff;
+    margin: 0;
+    line-height: 1.1;
+}
+
+.banner-info .desc-destaque {
+    font-size: 0.95rem;
+    color: #ddd;
+    margin: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2; /* Limita a 2 linhas no mobile para não ocupar tudo */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* --- CORREÇÃO DO HEADER NO CELULAR --- */
+@media (max-width: 768px) {
+    .header-principal {
+        flex-wrap: wrap;
+        padding: 8px 10px;
+        gap: 8px;
+    }
+
+    .header-esquerda {
+        flex-direction: row;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .logo-site-pequena {
+        font-size: 18px;
+    }
+
+    /* Esconde a barra de pesquisa gigante no topo do celular para não quebrar o layout, ou ajusta compacta */
+    .search-container {
+        order: 3;
+        width: 100%;
+        margin-top: 5px;
+    }
+
+    .search-container input {
+        width: 100%;
+        padding: 6px 10px;
+        font-size: 14px;
+    }
+
+    .header-acoes-direita {
+        gap: 8px;
+    }
+}
+
+/* --- AJUSTE PARA TELAS GRANDES (PC / TV) --- */
+@media (min-width: 1024px) {
+    .banner-netflix {
+        height: 85vh; /* Ocupa mais tela no PC/TV */
+    }
+
+    .banner-info {
+        position: absolute;
+        bottom: 15%;
+        left: 4%;
+        max-width: 600px;
+        background: none; /* Remove o fundo escuro no PC já que a imagem é widescreen */
+        padding: 0;
+    }
+
+    .banner-info .titulo-destaque {
+        font-size: 3.5rem;
+    }
 }
 
 .slide-item {
