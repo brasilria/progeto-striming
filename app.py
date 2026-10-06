@@ -291,36 +291,32 @@ def adicionar():
     extensao = arquivo.filename.rsplit('.', 1)[-1].lower()
     caminho_original_disco = ""
 
-    if extensao == 'zip':
-        caminho_zip_temporario = os.path.join(pasta_final, secure_filename(arquivo.filename))
-        arquivo.save(caminho_zip_temporario)
-
-        try:
-            with zipfile.ZipFile(caminho_zip_temporario, 'r') as zip_ref:
-                zip_ref.extractall(pasta_final)
-            os.remove(caminho_zip_temporario) 
-        except Exception as e:
-            return f"Erro ao descompactar a série: {e}", 500
-
-        arquivos_internos = sorted([f for f in os.listdir(pasta_final) if f.lower().endswith(('.mp4', '.mkv', '.webm'))])
-        if not arquivos_internos:
-            return "Nenhum arquivo de vídeo suportado localizado dentro do pacote .zip", 400
-        
-        caminho_original_disco = os.path.join(pasta_final, arquivos_internos[0])
-
-    elif extensao in ['mp4', 'mkv', 'webm']:
-        nome_video_limpo = secure_filename(arquivo.filename)
-        caminho_original_disco = os.path.join(pasta_final, nome_video_limpo)
+    # Salvamento seguro em blocos (Streaming) para economizar RAM
+    if extensao in ['zip', 'mp4', 'mkv', 'webm']:
+        nome_arquivo_salvo = secure_filename(arquivo.filename) if extensao != 'zip' else "pacote_temporario.zip"
+        caminho_temporario = os.path.join(pasta_final, nome_arquivo_salvo)
         
         try:
-            with open(caminho_original_disco, 'wb') as f:
-                while True:
-                    chunk = arquivo.stream.read(1024 * 1024)
-                    if not chunk: break
-                    f.write(chunk)
+            arquivo.save(caminho_temporario) # Salva direto no disco em chunks pelo Werkzeug
         except Exception as e:
             if os.path.exists(pasta_final): shutil.rmtree(pasta_final)
-            return f"Erro no salvamento do filme: {e}", 500
+            return f"Erro no salvamento do arquivo: {e}", 500
+
+        if extensao == 'zip':
+            try:
+                with zipfile.ZipFile(caminho_temporario, 'r') as zip_ref:
+                    zip_ref.extractall(pasta_final)
+                os.remove(caminho_temporario) 
+            except Exception as e:
+                return f"Erro ao descompactar a série: {e}", 500
+
+            arquivos_internos = sorted([f for f in os.listdir(pasta_final) if f.lower().endswith(('.mp4', '.mkv', '.webm'))])
+            if not arquivos_internos:
+                return "Nenhum arquivo de vídeo suportado localizado dentro do pacote .zip", 400
+            
+            caminho_original_disco = os.path.join(pasta_final, arquivos_internos[0])
+        else:
+            caminho_original_disco = caminho_temporario
     else:
         return "Extensão inválida. Envie arquivos de vídeo diretos ou um pacote .zip para séries.", 400
 
