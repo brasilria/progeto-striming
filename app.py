@@ -600,6 +600,12 @@ def gerar_link_direto():
     if not url_original: 
         return jsonify({'success': False, 'error': 'URL ausente'}), 400
 
+    # Se não for uma URL real (ex: é apenas o slug 'teste1' ou um nome de arquivo local)
+    if not url_original.startswith('http://') and not url_original.startswith('https://'):
+        # Trata como um arquivo local na pasta static/videos
+        caminho_local = url_for('static', filename=f'videos/{url_original}')
+        return jsonify({'success': True, 'url': caminho_local, 'is_youtube': False})
+
     if 'youtube.com' in url_original or 'youtu.be' in url_original:
         try:
             video_id_match = re.search(r'(?:v=|\/v\/|youtu\.be\/|\/embed\/|\/shorts\/)([a-zA-Z0-9_-]{11})', url_original)
@@ -612,6 +618,7 @@ def gerar_link_direto():
         except Exception as e:
             return jsonify({'success': False, 'error': f'Erro ao processar link do YouTube: {str(e)}'}), 500
 
+    # Para outros sites da web que usam o yt-dlp
     ydl_opts = {'format': 'best[ext=mp4]/best', 'quiet': True, 'noplaylist': True}
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
