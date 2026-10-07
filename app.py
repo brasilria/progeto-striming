@@ -282,64 +282,80 @@ def adicionar():
     nome_seguro = secure_filename(nome.lower().replace(" ", "_"))
     caminho_db_capa = f"{nome_seguro}.jpg"
     pasta_final = os.path.join(app.config['UPLOAD_FOLDER'], nome_seguro)
-
-    if os.path.exists(pasta_final):
-        shutil.rmtree(pasta_final)
-    
     os.makedirs(pasta_final, exist_ok=True)
     
     extensao = arquivo.filename.rsplit('.', 1)[-1].lower()
-    caminho_original_disco = ""
+    caminho_temporario = os.path.join(pasta_final, secure_filename(arquivo.filename))
 
-    # Salvamento seguro em blocos (Streaming) para economizar RAM
     if extensao in ['zip', 'mp4', 'mkv', 'webm']:
-        nome_arquivo_salvo = secure_filename(arquivo.filename) if extensao != 'zip' else "pacote_temporario.zip"
-        caminho_temporario = os.path.join(pasta_final, nome_arquivo_salvo)
-        
         try:
-            arquivo.save(caminho_temporario) # Salva direto no disco em chunks pelo Werkzeug
+            arquivo.save(caminho_temporario)
         except Exception as e:
             if os.path.exists(pasta_final): shutil.rmtree(pasta_final)
-            return f"Erro no salvamento do arquivo: {e}", 500
+            return f"Erro no salvamento do arquivo temporário: {e}", 500
 
-        if extensao == 'zip':
-            try:
-                with zipfile.ZipFile(caminho_temporario, 'r') as zip_ref:
-                    zip_ref.extractall(pasta_final)
-                os.remove(caminho_temporario) 
-            except Exception as e:
-                return f"Erro ao descompactar a série: {e}", 500
+        # 🚀 ENVIA DIRETAMENTE PARA O TELEGRAM (Nuvem Gratuita e Ilimitada)
+        print(f"📤 Enviando '{nome}' para o canal do Telegram...")
+        file_id_telegram = enviar_arquivo_para_telegram(caminho_temporario, nome)
+        
+        # Limpa o arquivo local do Render após subir para o Telegram para não ocupar espaço
+        if os.path.exists(caminho_temporario):
+            os.remove(caminho_temporario)
 
-            arquivos_internos = sorted([f for f in os.listdir(pasta_final) if f.lower().endswith(('.mp4', '.mkv', '.webm'))])
-            if not arquivos_internos:
-                return "Nenhum arquivo de vídeo suportado localizado dentro do pacote .zip", 400
-            
-            caminho_original_disco = os.path.join(pasta_final, arquivos_internos[0])
-        else:
-            caminho_original_disco = caminho_temporario
+        if not file_id_telegram:
+            return "Erro: Não foi possível armazenar o arquivo no Telegram. Verifique o Token e o ID do Canal.", 500
     else:
-        return "Extensão inválida. Envie arquivos de vídeo diretos ou um pacote .zip para séries.", 400
+        return "Extensão inválida. Envie arquivos de vídeo diretos ou um pacote .zip.", 400
 
+    # Salvamos o file_id do Telegram no campo 'arquivo' da tabela series
     conn = get_db_connection()
     cursor = conn.cursor()
     executar_query(cursor, '''
-        INSERT INTO series (nome, descricao, arquivo, capa, conta_id, usuario_id) 
-        VALUES (%s, %s, %s, %s, %s, %s)
-    ''', (nome, descricao, nome_seguro, caminho_db_capa, session['conta_id'], usuario_id))
+        INSERT INTO series (nome, descricao, arquivo, capa, conta_id, usuario_id, eh_video_unico) 
+        VALUES (%s, %s, %s, %s, %s, %s, 1)
+    ''', (nome, descricao, file_id_telegram, caminho_db_capa, session['conta_id'], usuario_id))
     conn.commit()
     cursor.close()
     conn.close()
 
+    # Criação vazia da capa caso não exista
     caminho_capa_completo = os.path.join(app.config['THUMBNAIL_FOLDER'], caminho_db_capa)
     if not os.path.exists(caminho_capa_completo):
         open(caminho_capa_completo, 'a').close()
 
-    threading.Thread(
-        target=importador.motor_de_importacao, 
-        args=(caminho_original_disco, pasta_final, caminho_capa_completo, f".{extensao}")
-    ).start()
-
     return redirect('/')
+
+def enviar_arquivo_para_telegram(caminho_arquivo, titulo_video):
+    """Envia o arquivo de vídeo ou zip de forma silenciosa para o canal do Telegram e retorna o file_id"""
+    token = os.environ.get('TELEGRAM_BOT_TOKEN')
+    canal_id = os.environ.get('TELEGRAM_CHANNEL_ID')
+    
+    if not token or not canal_id:
+        print("❌ Token ou Canal do Telegram não configurados nas variáveis de ambiente.")
+        return None
+
+    url = f"https://api.telegram.org/bot{token}/sendDocument"
+    
+    try:
+        with open(caminho_arquivo, 'rb') as arquivo:
+            payload = {
+                'chat_id': canal_id,
+                'caption': f"Backup PobreFlix: {titulo_video}"
+            }
+            files = {'document': arquivo}
+            resposta = requests.post(url, data=payload, files=files)
+            
+            if resposta.status_code == 200:
+                dados_json = resposta.json()
+                # O Telegram retorna o file_id do documento enviado
+                file_id = dados_json['result']['document']['file_id']
+                return file_id
+            else:
+                print(f"❌ Erro ao enviar para o Telegram: {resposta.text}")
+                return None
+    except Exception as e:
+        print(f"❌ Erro na requisição do Telegram: {e}")
+        return None
 
 @app.route('/deletar_serie_completa/<int:id_filme>', methods=['DELETE'])
 def deletar_serie_completa(id_filme):
@@ -424,6 +440,21 @@ def ver_video(nome_serie, video_atual):
         nome_serie=nome_serie,
         capa=url_capa
     )
+
+def obter_url_direta_telegram(file_id):
+    """Pega o file_id do banco e solicita ao Telegram um link de download direto válido"""
+    token = os.environ.get('TELEGRAM_BOT_TOKEN')
+    url_file_info = f"https://api.telegram.org/bot{token}/getFile?file_id={file_id}"
+    
+    try:
+        resposta = requests.get(url_file_info)
+        if resposta.status_code == 200:
+            caminho_no_servidor = resposta.json()['result']['file_path']
+            # Retorna o link direto e seguro dos servidores do Telegram para o player reproduzir
+            return f"https://api.telegram.org/file/bot{token}/{caminho_no_servidor}"
+    except Exception as e:
+        print(f"❌ Erro ao buscar link do Telegram: {e}")
+    return None
 
 @app.route('/trocar_capa/<nome_base>', methods=['POST'])
 def trocar_capa(nome_base):
