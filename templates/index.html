@@ -305,10 +305,19 @@
                     </div>
                     <div class="info">
                         <h3>{{ serie.nome }}</h3>
+                        
+                        <!-- Botão de Assistir/Ver Episódios -->
                         {% if serie.eh_video_unico %}
                             <a href="/video/{{ serie.arquivo }}/{{ serie.primeiro_video }}" class="btn-ver">Assistir</a>
                         {% else %}
                             <a href="/serie/{{ serie.arquivo }}" class="btn-ver">Episódios</a>
+                        {% endif %}
+                    
+                        <!-- Botão de Download do .zip (Aparece apenas se a série tiver um link zip cadastrado) -->
+                        {% if serie.link_zip %}
+                            <a href="{{ serie.link_zip }}" class="btn-ver" style="background-color: #28a745; margin-top: 5px;" download>
+                                📥 Baixar .zip
+                            </a>
                         {% endif %}
                     </div>
                 </div>
