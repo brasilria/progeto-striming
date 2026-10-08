@@ -332,8 +332,8 @@ def adicionar():
 
 def enviar_arquivo_para_telegram(caminho_arquivo, titulo_video):
     """Envia o arquivo de vídeo ou zip de forma silenciosa para o canal do Telegram e retorna o file_id"""
-    token = os.environ.get('TELEGRAM_BOT_TOKEN')
-    canal_id = os.environ.get('TELEGRAM_CHANNEL_ID')
+    token = os.environ.get('TELEGRAM_BOT_TOKEN', TELEGRAM_BOT_TOKEN)
+    canal_id = os.environ.get('TELEGRAM_CHANNEL_ID', TELEGRAM_CHANNEL_ID)
     
     if not token or not canal_id:
         print("❌ Token ou Canal do Telegram não configurados nas variáveis de ambiente.")
@@ -350,6 +350,11 @@ def enviar_arquivo_para_telegram(caminho_arquivo, titulo_video):
             files = {'document': arquivo}
             resposta = requests.post(url, data=payload, files=files)
             
+            # --- IMPRIME O RETORNO EXATO PARA DEBUG ---
+            print(f"Status Telegram: {resposta.status_code}")
+            print(f"Resposta Telegram: {resposta.text}")
+            # ------------------------------------------
+            
             if resposta.status_code == 200:
                 dados_json = resposta.json()
                 file_id = dados_json['result']['document']['file_id']
@@ -360,7 +365,6 @@ def enviar_arquivo_para_telegram(caminho_arquivo, titulo_video):
     except Exception as e:
         print(f"❌ Erro na requisição do Telegram: {e}")
         return None
-
 
 def obter_url_direta_telegram(file_id):
     """Pega o file_id do banco e solicita ao Telegram um link de download direto válido"""
