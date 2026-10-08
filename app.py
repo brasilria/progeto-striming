@@ -463,17 +463,59 @@ def ver_serie(nome_serie):
 
 @app.route('/video/<nome_serie>/<video_atual>')
 def ver_video(nome_serie, video_atual):
-    caminho_midia = f"videos/{nome_serie}/{video_atual}"
+  # O 'video_atual' agora é o File ID do Telegram (ou começa com BAACAg...)
+  # Se o ID do Telegram for passado, fazemos o streaming direto do Telegram:
+  if video_atual.startswith('BAACAg') or len(video_atual) > 30:
+    token = os.environ.get('TELEGRAM_BOT_TOKEN', TELEGRAM_BOT_TOKEN)
+
+    # 1. Pede o link direto do arquivo para a API do Telegram usando o File ID
+    get_file_url = (
+        f'https://api.telegram.org/bot{token}/getFile?file_id={video_atual}'
+    )
+    resposta_tg = requests.get(get_file_url).json()
+
+    if not resposta_tg.get('ok'):
+      return 'Erro ao localizar o vídeo no Telegram.', 404
+
+    file_path = resposta_tg['result']['file_path']
+    telegram_download_url = (
+        f'https://api.telegram.org/file/bot{token}/{file_path}'
+    )
+
+    # 2. Cria uma função geradora para transmitir os pedaços (chunks) do vídeo para o navegador
+    def gerar_stream():
+      req = requests.get(telegram_download_url, stream=True)
+      for chunk in req.iter_content(chunk_size=1024 * 1024):  # Pedaços de 1MB
+        if chunk:
+          yield chunk
+
+    # 3. Retorna o streaming do vídeo em tempo real para o HTML5 <video>
+    url_capa = url_for('static', filename=f'capas/{nome_serie}.jpg')
+    titulo_formatado = (
+        nome_serie.replace('_', ' ').title()
+        if video_atual == nome_serie
+        else 'Reproduzindo da Nuvem'
+    )
+
+    # Se você tiver um template específico para stream do Telegram ou quiser injetar o link direto:
+    # Nota: Alternativamente, você pode passar o 'telegram_download_url' direto para o src do vídeo no HTML!
+    return Response(gerar_stream(), mimetype='video/mp4')
+
+  else:
+    # --- MODO ANTIGO (Caso ainda tenha algum vídeo local na pasta) ---
+    caminho_midia = f'videos/{nome_serie}/{video_atual}'
     url_video_real = url_for('static', filename=caminho_midia)
     url_capa = url_for('static', filename=f'capas/{nome_serie}.jpg')
 
     return render_template(
-        'player.html', 
-        url_video=url_video_real, 
-        titulo=video_atual.replace('_', ' ').replace('.mp4', '').replace('.mkv', '').replace('.webm', ''), 
-        proximo=None, 
+        'player.html',
+        url_video=url_video_real,
+        titulo=video_atual.replace('_', ' ')
+        .replace('.mp4', '')
+        .replace('.mkv', ''),
+        proximo=None,
         nome_serie=nome_serie,
-        capa=url_capa
+        capa=url_capa,
     )
 
 @app.route('/trocar_capa/<nome_base>', methods=['POST'])
