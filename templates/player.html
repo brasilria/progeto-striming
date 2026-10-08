@@ -58,7 +58,8 @@
 
         <div class="click-overlay" id="videoClick"></div>
 
-        <video id="videoPlayer" width="100%" height="auto" controls autoplay>
+        <!-- REMOVIDO o autoplay e adicionado preload="auto" para carregar o arquivo externo sem travar -->
+        <video id="videoPlayer" width="100%" height="auto" controls preload="auto">
             <source src="{{ url_video }}" type="video/mp4">
             Seu navegador não suporta a reprodução deste vídeo.
         </video>
@@ -70,14 +71,13 @@
 
             <div class="botoes-controle">
                 <button id="rewind" class="btn-acao">↺</button>
-                <button id="playPause" class="btn-acao btn-central">❚❚</button>
+                <button id="playPause" class="btn-acao btn-central">▶</button>
                 <button id="forward" class="btn-acao">↻</button>
             </div>
         </div>
     </div>
 
     <script>
-        // CORREÇÃO DE ID: Agora pegando o 'videoPlayer' real do HTML
         const video = document.getElementById('videoPlayer');
         const btnPlay = document.getElementById('playPause');
         const barra = document.getElementById('progresso');
@@ -86,11 +86,14 @@
         const proximoEp = "{{ proximo }}";
         const nomeSerie = "{{ nome_serie }}";
 
-        // Alterna entre Play e Pause de verdade de forma limpa
+        // Função segura para alternar Play/Pause lidando com as promessas do navegador
         function togglePlay() {
             if (video.paused) {
-                video.play();
-                btnPlay.innerHTML = '❚❚';
+                video.play().then(() => {
+                    btnPlay.innerHTML = '❚❚';
+                }).catch(error => {
+                    console.log("Reprodução impedida pelo navegador:", error);
+                });
             } else {
                 video.pause();
                 btnPlay.innerHTML = '▶';
@@ -101,7 +104,7 @@
         document.getElementById('videoClick').addEventListener('click', togglePlay);
         btnPlay.addEventListener('click', togglePlay);
 
-        // Atualiza os ícones caso o usuário use os controles nativos do próprio navegador
+        // Atualiza os ícones caso o usuário use os controles nativos
         video.addEventListener('play', () => btnPlay.innerHTML = '❚❚');
         video.addEventListener('pause', () => btnPlay.innerHTML = '▶');
 
@@ -122,12 +125,12 @@
             video.currentTime = novaPorcentagem * video.duration;
         });
 
-        // Botão de Avançar 10 segundos funcionando
+        // Botão de Avançar 10 segundos
         document.getElementById('forward').onclick = () => { 
             video.currentTime += 10; 
         };
 
-        // Botão de Voltar 10 segundos funcionando
+        // Botão de Voltar 10 segundos
         document.getElementById('rewind').onclick = () => { 
             video.currentTime -= 10; 
         };
