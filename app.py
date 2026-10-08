@@ -4,6 +4,7 @@ import os
 import zipfile
 import cv2
 import shutil
+import requests
 from werkzeug.utils import secure_filename
 import importador
 import threading
@@ -21,6 +22,10 @@ app.config['THUMBNAIL_FOLDER'] = 'static/capas'
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['THUMBNAIL_FOLDER'], exist_ok=True)
+
+TELEGRAM_BOT_TOKEN = 7905838078:AAHLkRxtsTWA9gGdS2osdd8m7Md1e_JxWOQ
+
+TELEGRAM_CHANNEL_ID = -1004496261629
 
 def usando_postgres():
     return bool(os.environ.get('DATABASE_URL') and os.environ.get('DATABASE_URL').startswith("postgres"))
@@ -327,8 +332,8 @@ def adicionar():
 
 def enviar_arquivo_para_telegram(caminho_arquivo, titulo_video):
     """Envia o arquivo de vídeo ou zip de forma silenciosa para o canal do Telegram e retorna o file_id"""
-    token = os.environ.get('7905838078:AAHLkRxtsTWA9gGdS2osdd8m7Md1e_JxWOQ')
-    canal_id = os.environ.get('-1004496261629')
+    token = os.environ.get('TELEGRAM_BOT_TOKEN')
+    canal_id = os.environ.get('TELEGRAM_CHANNEL_ID')
     
     if not token or not canal_id:
         print("❌ Token ou Canal do Telegram não configurados nas variáveis de ambiente.")
@@ -347,7 +352,6 @@ def enviar_arquivo_para_telegram(caminho_arquivo, titulo_video):
             
             if resposta.status_code == 200:
                 dados_json = resposta.json()
-                # O Telegram retorna o file_id do documento enviado
                 file_id = dados_json['result']['document']['file_id']
                 return file_id
             else:
@@ -356,6 +360,25 @@ def enviar_arquivo_para_telegram(caminho_arquivo, titulo_video):
     except Exception as e:
         print(f"❌ Erro na requisição do Telegram: {e}")
         return None
+
+
+def obter_url_direta_telegram(file_id):
+    """Pega o file_id do banco e solicita ao Telegram um link de download direto válido"""
+    token = os.environ.get('TELEGRAM_BOT_TOKEN')
+    if not token:
+        print("❌ Token do Telegram não configurado.")
+        return None
+        
+    url_file_info = f"https://api.telegram.org/bot{token}/getFile?file_id={file_id}"
+    
+    try:
+        resposta = requests.get(url_file_info)
+        if resposta.status_code == 200:
+            caminho_no_servidor = resposta.json()['result']['file_path']
+            return f"https://api.telegram.org/file/bot{token}/{caminho_no_servidor}"
+    except Exception as e:
+        print(f"❌ Erro ao buscar link do Telegram: {e}")
+    return None
 
 @app.route('/deletar_serie_completa/<int:id_filme>', methods=['DELETE'])
 def deletar_serie_completa(id_filme):
@@ -440,21 +463,6 @@ def ver_video(nome_serie, video_atual):
         nome_serie=nome_serie,
         capa=url_capa
     )
-
-def obter_url_direta_telegram(file_id):
-    """Pega o file_id do banco e solicita ao Telegram um link de download direto válido"""
-    token = os.environ.get('7905838078:AAHLkRxtsTWA9gGdS2osdd8m7Md1e_JxWOQ')
-    url_file_info = f"https://api.telegram.org/bot{token}/getFile?file_id={file_id}"
-    
-    try:
-        resposta = requests.get(url_file_info)
-        if resposta.status_code == 200:
-            caminho_no_servidor = resposta.json()['result']['file_path']
-            # Retorna o link direto e seguro dos servidores do Telegram para o player reproduzir
-            return f"https://api.telegram.org/file/bot{token}/{caminho_no_servidor}"
-    except Exception as e:
-        print(f"❌ Erro ao buscar link do Telegram: {e}")
-    return None
 
 @app.route('/trocar_capa/<nome_base>', methods=['POST'])
 def trocar_capa(nome_base):
@@ -587,10 +595,16 @@ def assistir(video_id):
         if 'url_video' in item and item['url_video']:
             url_banco = item['url_video']
         elif 'arquivo' in item and item['arquivo']:
-            url_banco = item['arquivo']
+            val_arquivo = item['arquivo']
+            # Se parecer um file_id do Telegram (geralmente grande e alfanumérico sem extensão de arquivo)
+            if not val_arquivo.endswith(('.mp4', '.mkv', '.webm', '.zip')) and len(val_arquivo) > 20:
+                url_banco = obter_url_direta_telegram(val_arquivo)
+            else:
+                # É um arquivo local antigo na pasta static/videos
+                url_banco = url_for('static', filename=f"videos/{val_arquivo}")
 
         if not url_banco:
-            return "Erro: Link vazio.", 400
+            return "Erro: Link ou arquivo vazio.", 400
 
         titulo_video = item['nome'] if 'nome' in item else item['titulo']
         return render_template('player2.html', url_video=url_banco, titulo=titulo_video)
