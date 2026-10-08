@@ -331,7 +331,7 @@ def adicionar():
     return redirect('/')
 
 def enviar_arquivo_para_telegram(caminho_arquivo, titulo_video):
-    """Envia o arquivo de vídeo ou zip de forma silenciosa para o canal do Telegram e retorna o file_id"""
+    """Envia o arquivo de vídeo ou zip para o canal do Telegram e retorna o file_id correto"""
     token = os.environ.get('TELEGRAM_BOT_TOKEN', TELEGRAM_BOT_TOKEN)
     canal_id = os.environ.get('TELEGRAM_CHANNEL_ID', TELEGRAM_CHANNEL_ID)
     
@@ -350,14 +350,22 @@ def enviar_arquivo_para_telegram(caminho_arquivo, titulo_video):
             files = {'document': arquivo}
             resposta = requests.post(url, data=payload, files=files)
             
-            # --- IMPRIME O RETORNO EXATO PARA DEBUG ---
             print(f"Status Telegram: {resposta.status_code}")
-            print(f"Resposta Telegram: {resposta.text}")
-            # ------------------------------------------
             
             if resposta.status_code == 200:
                 dados_json = resposta.json()
-                file_id = dados_json['result']['document']['file_id']
+                resultado = dados_json.get('result', {})
+                
+                # Tenta pegar o file_id dependendo de como o Telegram processou a mídia
+                if 'document' in resultado:
+                    file_id = resultado['document']['file_id']
+                elif 'video' in resultado:
+                    file_id = resultado['video']['file_id']
+                else:
+                    print("❌ O Telegram respondeu 200, mas nenhuma chave de arquivo válida foi encontrada.")
+                    return None
+                    
+                print(f"✅ File ID capturado com sucesso: {file_id}")
                 return file_id
             else:
                 print(f"❌ Erro ao enviar para o Telegram: {resposta.text}")
