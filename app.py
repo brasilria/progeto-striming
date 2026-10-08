@@ -1,18 +1,10 @@
-from flask import Flask, render_template, request, redirect, make_response, url_for, jsonify, send_from_directory, session
-from flask import Flask, Response, abort, redirect, render_template, url_for
+from flask import Flask, render_template, request, redirect, make_response, url_for, jsonify, send_from_directory, session, Response, abort
 import sqlite3
 import os
 import zipfile
-import cv2
 import shutil
 import requests
 from werkzeug.utils import secure_filename
-import importador
-import threading
-import random
-import telegram
-from telegram import Bot
-import asyncio
 import yt_dlp
 import re
 
@@ -25,17 +17,16 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['THUMBNAIL_FOLDER'], exist_ok=True)
 
 TELEGRAM_BOT_TOKEN = "7905838078:AAHLkRxtsTWA9gGdS2osdd8m7Md1e_JxWOQ"
-
 TELEGRAM_CHANNEL_ID = "-1004411648715"
 
 def usando_postgres():
-    return bool(os.environ.get('DATABASE_URL') and os.environ.get('DATABASE_URL').startswith("postgres"))
+    db_url = os.environ.get('DATABASE_URL', '')
+    return bool(db_url and db_url.startswith("postgres"))
 
 def get_db_connection():
     db_url = os.environ.get('DATABASE_URL')
     if db_url and db_url.startswith("postgres"):
         import psycopg2
-        from psycopg2.extras import RealDictCursor
         if db_url.startswith("postgres://"):
             db_url = db_url.replace("postgres://", "postgresql://", 1)
         return psycopg2.connect(db_url)
@@ -44,12 +35,6 @@ def get_db_connection():
         conn.row_factory = sqlite3.Row
         return conn
 
-def executar_query(cursor, query, params=()):
-    """Converte automaticamente %s para ? se estiver usando SQLite"""
-    if not usando_postgres():
-        query = query.replace('%s', '?')
-    cursor.execute(query, params)
-
 def criar_cursor(conn):
     if usando_postgres():
         from psycopg2.extras import RealDictCursor
@@ -57,60 +42,111 @@ def criar_cursor(conn):
     else:
         return conn.cursor()
 
+def executar_query(cursor, query, params=()):
+    """Converte automaticamente %s para ? se estiver usando SQLite"""
+    if not usando_postgres():
+        query = query.replace('%s', '?')
+    cursor.execute(query, params)
+
 def init_db():
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = criar_cursor(conn)
     
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS contas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT NOT NULL UNIQUE,
-            senha TEXT NOT NULL
-        )
-    ''')
-    
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS usuarios (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT NOT NULL,
-            conta_id INTEGER,
-            FOREIGN KEY (conta_id) REFERENCES contas(id),
-            UNIQUE(nome, conta_id)
-        )
-    ''')
-    
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS series (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT NOT NULL,
-            descricao TEXT,
-            arquivo TEXT,
-            capa TEXT,
-            classificacao TEXT,
-            conta_id INTEGER,
-            usuario_id INTEGER,
-            eh_video_unico INTEGER DEFAULT 0,
-            primeiro_video TEXT,
-            FOREIGN KEY (conta_id) REFERENCES contas(id)
-        )
-    ''')
-    
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS feed_publico (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            titulo TEXT NOT NULL,
-            descricao TEXT,
-            url_video TEXT NOT NULL,
-            capa_url TEXT,
-            autor_id INTEGER, 
-            nome_autor TEXT,  
-            denuncias INTEGER DEFAULT 0,
-            visualizacoes INTEGER DEFAULT 0,
-            data_postagem TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (autor_id) REFERENCES contas(id)
-        )
-    ''')
-    
+    if usando_postgres():
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS contas (
+                id SERIAL PRIMARY KEY,
+                email TEXT NOT NULL UNIQUE,
+                senha TEXT NOT NULL
+            )
+        ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id SERIAL PRIMARY KEY,
+                nome TEXT NOT NULL,
+                conta_id INTEGER,
+                FOREIGN KEY (conta_id) REFERENCES contas(id),
+                UNIQUE(nome, conta_id)
+            )
+        ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS series (
+                id SERIAL PRIMARY KEY,
+                nome TEXT NOT NULL,
+                descricao TEXT,
+                arquivo TEXT,
+                capa TEXT,
+                classificacao TEXT,
+                conta_id INTEGER,
+                usuario_id INTEGER,
+                eh_video_unico INTEGER DEFAULT 0,
+                primeiro_video TEXT,
+                FOREIGN KEY (conta_id) REFERENCES contas(id)
+            )
+        ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS feed_publico (
+                id SERIAL PRIMARY KEY,
+                titulo TEXT NOT NULL,
+                descricao TEXT,
+                url_video TEXT NOT NULL,
+                capa_url TEXT,
+                autor_id INTEGER, 
+                nome_autor TEXT,  
+                denuncias INTEGER DEFAULT 0,
+                visualizacoes INTEGER DEFAULT 0,
+                data_postagem TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (autor_id) REFERENCES contas(id)
+            )
+        ''')
+    else:
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS contas (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT NOT NULL UNIQUE,
+                senha TEXT NOT NULL
+            )
+        ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nome TEXT NOT NULL,
+                conta_id INTEGER,
+                FOREIGN KEY (conta_id) REFERENCES contas(id),
+                UNIQUE(nome, conta_id)
+            )
+        ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS series (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nome TEXT NOT NULL,
+                descricao TEXT,
+                arquivo TEXT,
+                capa TEXT,
+                classificacao TEXT,
+                conta_id INTEGER,
+                usuario_id INTEGER,
+                eh_video_unico INTEGER DEFAULT 0,
+                primeiro_video TEXT,
+                FOREIGN KEY (conta_id) REFERENCES contas(id)
+            )
+        ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS feed_publico (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                titulo TEXT NOT NULL,
+                descricao TEXT,
+                url_video TEXT NOT NULL,
+                capa_url TEXT,
+                autor_id INTEGER, 
+                nome_autor TEXT,  
+                denuncias INTEGER DEFAULT 0,
+                visualizacoes INTEGER DEFAULT 0,
+                data_postagem TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (autor_id) REFERENCES contas(id)
+            )
+        ''')
+        
     conn.commit()
     cursor.close()
     conn.close()
@@ -131,10 +167,11 @@ def login():
         executar_query(cursor, 'SELECT id, email FROM contas WHERE email = %s AND senha = %s', (email, senha))
         conta = cursor.fetchone()
         
+        cursor.close()
         conn.close()
         
         if conta:
-            session['conta_id'] = conta['id'] if not usando_postgres() else conta['id']
+            session['conta_id'] = conta['id']
             session['conta_email'] = email
             return redirect(url_for('gerenciar_perfis'))
         else:
@@ -150,9 +187,10 @@ def cadastro():
         
         try:
             conn = get_db_connection()
-            cursor = conn.cursor()
+            cursor = criar_cursor(conn)
             executar_query(cursor, 'INSERT INTO contas (email, senha) VALUES (%s, %s)', (email, senha))
             conn.commit()
+            cursor.close()
             conn.close()
             return redirect(url_for('login'))
         except Exception as e:
@@ -187,7 +225,7 @@ def criar_perfil():
     nome = request.form.get('nome')
     if nome:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = criar_cursor(conn)
         try:
             executar_query(cursor, 'INSERT INTO usuarios (nome, conta_id) VALUES (%s, %s)', (nome, session['conta_id']))
             conn.commit()
@@ -209,7 +247,7 @@ def selecionar_perfil(id):
     conn.close()
     
     if user:
-        session['usuario_logado'] = user['nome'] if not usando_postgres() else user[0] 
+        session['usuario_logado'] = user['nome']
     return redirect('/')
 
 @app.route('/sair_perfil')
@@ -231,7 +269,7 @@ def index():
         cursor.close(); conn.close()
         return redirect(url_for('gerenciar_perfis'))
         
-    usuario_id = perfil_atual['id'] if not usando_postgres() else perfil_atual['id']
+    usuario_id = perfil_atual['id']
     executar_query(cursor, 'SELECT * FROM series WHERE usuario_id = %s', (usuario_id,))
     series_cruas = cursor.fetchall()
     cursor.close(); conn.close()
@@ -242,8 +280,8 @@ def index():
         if not item.get('capa') or item['capa'] == 'None': 
             item['capa'] = 'default.jpg'
         
-        caminho_pasta = os.path.join(app.config['UPLOAD_FOLDER'], item['arquivo'])
-        if os.path.isdir(caminho_pasta):
+        caminho_pasta = os.path.join(app.config['UPLOAD_FOLDER'], item['arquivo'] if item.get('arquivo') else '')
+        if item.get('arquivo') and os.path.isdir(caminho_pasta):
             arquivos = sorted([f for f in os.listdir(caminho_pasta) if f.lower().endswith(('.mp4', '.mkv', '.webm'))])
             if arquivos:
                 item['eh_video_unico'] = (item.get('eh_video_unico') == 1) or (len(arquivos) == 1)
@@ -253,7 +291,7 @@ def index():
                 item['primeiro_video'] = None
         else:
             item['eh_video_unico'] = True
-            item['primeiro_video'] = item['arquivo']
+            item['primeiro_video'] = item.get('arquivo')
         
         lista_processada.append(item)
 
@@ -281,7 +319,7 @@ def adicionar():
         conn.close()
         return "Perfil inválido ou desconectado.", 400
     
-    usuario_id = perfil_atual['id'] if not usando_postgres() else perfil_atual[0]
+    usuario_id = perfil_atual['id']
     cursor.close()
     conn.close()
 
@@ -300,11 +338,9 @@ def adicionar():
             if os.path.exists(pasta_final): shutil.rmtree(pasta_final)
             return f"Erro no salvamento do arquivo temporário: {e}", 500
 
-        # 🚀 ENVIA DIRETAMENTE PARA O TELEGRAM (Nuvem Gratuita e Ilimitada)
         print(f"📤 Enviando '{nome}' para o canal do Telegram...")
         file_id_telegram = enviar_arquivo_para_telegram(caminho_temporario, nome)
         
-        # Limpa o arquivo local do Render após subir para o Telegram para não ocupar espaço
         if os.path.exists(caminho_temporario):
             os.remove(caminho_temporario)
 
@@ -313,9 +349,8 @@ def adicionar():
     else:
         return "Extensão inválida. Envie arquivos de vídeo diretos ou um pacote .zip.", 400
 
-    # Salvamos o file_id do Telegram no campo 'arquivo' da tabela series
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = criar_cursor(conn)
     executar_query(cursor, '''
         INSERT INTO series (nome, descricao, arquivo, capa, conta_id, usuario_id, eh_video_unico) 
         VALUES (%s, %s, %s, %s, %s, %s, 1)
@@ -324,7 +359,6 @@ def adicionar():
     cursor.close()
     conn.close()
 
-    # Criação vazia da capa caso não exista
     caminho_capa_completo = os.path.join(app.config['THUMBNAIL_FOLDER'], caminho_db_capa)
     if not os.path.exists(caminho_capa_completo):
         open(caminho_capa_completo, 'a').close()
@@ -332,57 +366,39 @@ def adicionar():
     return redirect('/')
 
 def enviar_arquivo_para_telegram(caminho_arquivo, titulo_video):
-  """Envia um vídeo real de forma nativa para o canal do Telegram e retorna o file_id"""
-  token = os.environ.get('TELEGRAM_BOT_TOKEN', TELEGRAM_BOT_TOKEN)
-  canal_id = os.environ.get('TELEGRAM_CHANNEL_ID', TELEGRAM_CHANNEL_ID)
+    token = os.environ.get('TELEGRAM_BOT_TOKEN', TELEGRAM_BOT_TOKEN)
+    canal_id = os.environ.get('TELEGRAM_CHANNEL_ID', TELEGRAM_CHANNEL_ID)
 
-  if not token or not canal_id:
-    print('❌ Token ou Canal do Telegram não configurados.')
-    return None
-
-  # MUDANÇA CRUCIAL: Usar sendVideo em vez de sendDocument para vídeos!
-  url = f'https://api.telegram.org/bot{token}/sendVideo'
-
-  try:
-    with open(caminho_arquivo, 'rb') as arquivo:
-      payload = {'chat_id': canal_id, 'caption': f'PobreFlix: {titulo_video}'}
-      # A chave do dicionário passa a ser 'video' para o Telegram tratar como mídia nativa
-      files = {'video': arquivo}
-      resposta = requests.post(url, data=payload, files=files)
-
-      print(f'Status Telegram: {resposta.status_code}')
-
-      if resposta.status_code == 200:
-        dados_json = resposta.json()
-        resultado = dados_json.get('result', {})
-
-        # Como usamos sendVideo, o Telegram vai retornar obrigatoriamente dentro de 'video'
-        if 'video' in resultado:
-          file_id = resultado['video']['file_id']
-          print(f'✅ File ID de vídeo capturado com sucesso: {file_id}')
-          return file_id
-        else:
-          print(
-              '❌ O Telegram respondeu 200, mas a chave de vídeo não veio no'
-              ' formato esperado.'
-          )
-          return None
-      else:
-        print(f'❌ Erro ao enviar vídeo para o Telegram: {resposta.text}')
+    if not token or not canal_id:
+        print('❌ Token ou Canal do Telegram não configurados.')
         return None
-  except Exception as e:
-    print(f'❌ Erro na requisição do Telegram: {e}')
-    return None
+
+    url = f'https://api.telegram.org/bot{token}/sendVideo'
+
+    try:
+        with open(caminho_arquivo, 'rb') as arquivo:
+            payload = {'chat_id': canal_id, 'caption': f'PobreFlix: {titulo_video}'}
+            files = {'video': arquivo}
+            resposta = requests.post(url, data=payload, files=files)
+
+            if resposta.status_code == 200:
+                dados_json = resposta.json()
+                resultado = dados_json.get('result', {})
+
+                if 'video' in resultado:
+                    file_id = resultado['video']['file_id']
+                    return file_id
+            return None
+    except Exception as e:
+        print(f'❌ Erro na requisição do Telegram: {e}')
+        return None
 
 def obter_url_direta_telegram(file_id):
-    """Pega o file_id do banco e solicita ao Telegram um link de download direto válido"""
-    token = os.environ.get('TELEGRAM_BOT_TOKEN')
+    token = os.environ.get('TELEGRAM_BOT_TOKEN', TELEGRAM_BOT_TOKEN)
     if not token:
-        print("❌ Token do Telegram não configurado.")
         return None
         
     url_file_info = f"https://api.telegram.org/bot{token}/getFile?file_id={file_id}"
-    
     try:
         resposta = requests.get(url_file_info)
         if resposta.status_code == 200:
@@ -400,7 +416,7 @@ def deletar_serie_completa(id_filme):
     resultado = cursor.fetchone()
     
     if resultado:
-        arquivo_nome = resultado['arquivo'] if not usando_postgres() else resultado[0]
+        arquivo_nome = resultado['arquivo']
         caminho_pasta = os.path.join(app.config['UPLOAD_FOLDER'], arquivo_nome)
         if os.path.exists(caminho_pasta): shutil.rmtree(caminho_pasta)
         executar_query(cursor, "DELETE FROM series WHERE id = %s", (id_filme,))
@@ -412,12 +428,12 @@ def deletar_serie_completa(id_filme):
 @app.route('/deletar_capa_filme/<int:id_filme>', methods=['DELETE'])
 def deletar_capa_filme(id_filme):
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = criar_cursor(conn)
     executar_query(cursor, "SELECT capa FROM series WHERE id = %s", (id_filme,))
     resultado = cursor.fetchone()
     
-    if resultado and resultado[0]: 
-        nome_capa = resultado[0]
+    if resultado and resultado['capa']: 
+        nome_capa = resultado['capa']
         caminho_capa = os.path.join(app.config['THUMBNAIL_FOLDER'], nome_capa)
         if os.path.exists(caminho_capa):
             os.remove(caminho_capa)
@@ -447,6 +463,7 @@ def adicionar_episodio(nome_serie):
     arquivo = request.files.get('novo_episodio')
     if arquivo and arquivo.filename != '':
         pasta_serie = os.path.join(app.config['UPLOAD_FOLDER'], nome_serie)
+        os.makedirs(pasta_serie, exist_ok=True)
         caminho_salvo = os.path.join(pasta_serie, secure_filename(arquivo.filename))
         arquivo.save(caminho_salvo)
         
@@ -461,17 +478,9 @@ def ver_serie(nome_serie):
     nome_exibicao = nome_serie.replace("_", " ")
     return render_template('serie.html', nome=nome_exibicao, episodios=episodios, nome_serie=nome_serie)
 
-import os
-from flask import render_template, url_for
-
-# Substitua 'seu-identificador-aqui' pelo nome do item/pasta que você criou no Archive.org
-ARCHIVE_BASE_URL = "https://archive.org/download/seu-identificador-aqui"
-
 @app.route('/video/<nome_serie>/<arquivo_video>')
 def ver_video(nome_serie, arquivo_video):
-    # Monta o link direto do Archive.org automaticamente
-    url_video_real = f"{ARCHIVE_BASE_URL}/{arquivo_video}"
-    
+    url_video_real = url_for('static', filename=f'videos/{nome_serie}/{arquivo_video}')
     url_capa = url_for('static', filename=f'capas/{nome_serie}.jpg')
 
     return render_template(
@@ -488,6 +497,7 @@ def trocar_capa(nome_base):
     if 'nova_capa' in request.files:
         arquivo_img = request.files['nova_capa']
         if arquivo_img.filename != '':
+            os.makedirs(app.config['THUMBNAIL_FOLDER'], exist_ok=True)
             caminho_capa = os.path.join(app.config['THUMBNAIL_FOLDER'], f"{nome_base}.jpg")
             arquivo_img.save(caminho_capa)
     return redirect('/')
@@ -513,7 +523,7 @@ def comunidade():
     videos_recomendados = []
 
     if genero_favorito:
-        gen = genero_favorito['classificacao'] if not usando_postgres() else genero_favorito[0]
+        gen = genero_favorito['classificacao']
         executar_query(cursor, '''
             SELECT * FROM feed_publico 
             WHERE (descricao LIKE %s OR titulo LIKE %s) AND autor_id != %s 
@@ -578,7 +588,7 @@ def publicar_bot():
         nome_autor = session.get('conta_email', 'Bot Soberano').split('@')[0]
 
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = criar_cursor(conn)
         executar_query(cursor, '''
             INSERT INTO feed_publico (titulo, descricao, url_video, capa_url, autor_id, nome_autor) 
             VALUES (%s, %s, %s, %s, %s, %s)
@@ -615,11 +625,9 @@ def assistir(video_id):
             url_banco = item['url_video']
         elif 'arquivo' in item and item['arquivo']:
             val_arquivo = item['arquivo']
-            # Se parecer um file_id do Telegram (geralmente grande e alfanumérico sem extensão de arquivo)
             if not val_arquivo.endswith(('.mp4', '.mkv', '.webm', '.zip')) and len(val_arquivo) > 20:
                 url_banco = obter_url_direta_telegram(val_arquivo)
             else:
-                # É um arquivo local antigo na pasta static/videos
                 url_banco = url_for('static', filename=f"videos/{val_arquivo}")
 
         if not url_banco:
@@ -645,7 +653,7 @@ def deletar_feed(video_id):
         conn.close()
         return jsonify({"erro": "Não encontrado."}), 404
 
-    autor_id_val = video['autor_id'] if not usando_postgres() else video[0]
+    autor_id_val = video['autor_id']
     if autor_id_val and int(autor_id_val) != int(session['conta_id']):
         cursor.close()
         conn.close()
@@ -664,9 +672,7 @@ def gerar_link_direto():
     if not url_original: 
         return jsonify({'success': False, 'error': 'URL ausente'}), 400
 
-    # Se não for uma URL real (ex: é apenas o slug 'teste1' ou um nome de arquivo local)
     if not url_original.startswith('http://') and not url_original.startswith('https://'):
-        # Trata como um arquivo local na pasta static/videos
         caminho_local = url_for('static', filename=f'videos/{url_original}')
         return jsonify({'success': True, 'url': caminho_local, 'is_youtube': False})
 
@@ -682,7 +688,6 @@ def gerar_link_direto():
         except Exception as e:
             return jsonify({'success': False, 'error': f'Erro ao processar link do YouTube: {str(e)}'}), 500
 
-    # Para outros sites da web que usam o yt-dlp
     ydl_opts = {'format': 'best[ext=mp4]/best', 'quiet': True, 'noplaylist': True}
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -703,7 +708,7 @@ def deletar_perfil(id):
     perfil = cursor.fetchone()
     
     if perfil:
-        nome_perfil_deletado = perfil['nome'] if not usando_postgres() else perfil[0]
+        nome_perfil_deletado = perfil['nome']
         
         executar_query(cursor, 'DELETE FROM usuarios WHERE id = %s AND conta_id = %s', (id, session['conta_id']))
         conn.commit()
@@ -721,7 +726,7 @@ def deletar_video_comunidade(video_id):
         return redirect(url_for('login'))
         
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = criar_cursor(conn)
     executar_query(cursor, 'DELETE FROM feed_publico WHERE id = %s AND autor_id = %s', (video_id, session['conta_id']))
     conn.commit()
     cursor.close()
