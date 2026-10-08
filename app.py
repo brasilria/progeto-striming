@@ -23,9 +23,9 @@ app.config['THUMBNAIL_FOLDER'] = 'static/capas'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['THUMBNAIL_FOLDER'], exist_ok=True)
 
-TELEGRAM_BOT_TOKEN = 7905838078:AAHLkRxtsTWA9gGdS2osdd8m7Md1e_JxWOQ
+TELEGRAM_BOT_TOKEN = "7905838078:AAHLkRxtsTWA9gGdS2osdd8m7Md1e_JxWOQ"
 
-TELEGRAM_CHANNEL_ID = -1004496261629
+TELEGRAM_CHANNEL_ID = "-1004496261629"
 
 def usando_postgres():
     return bool(os.environ.get('DATABASE_URL') and os.environ.get('DATABASE_URL').startswith("postgres"))
