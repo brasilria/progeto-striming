@@ -461,53 +461,26 @@ def ver_serie(nome_serie):
     nome_exibicao = nome_serie.replace("_", " ")
     return render_template('serie.html', nome=nome_exibicao, episodios=episodios, nome_serie=nome_serie)
 
-@app.route('/video/<nome_serie>/<video_atual>')
-def ver_video(nome_serie, video_atual):
-  token = os.environ.get('TELEGRAM_BOT_TOKEN', TELEGRAM_BOT_TOKEN)
+import os
+from flask import render_template, url_for
 
-  # Se o 'video_atual' for um File ID do Telegram (começa com BAACAg...)
-  if video_atual.startswith('BAACAg') or len(video_atual) > 30:
-    # Pede o link de streaming direto para a API do Telegram
-    get_file_url = (
-        f'https://api.telegram.org/bot{token}/getFile?file_id={video_atual}'
-    )
-    resposta_tg = requests.get(get_file_url).json()
+# Substitua 'seu-identificador-aqui' pelo nome do item/pasta que você criou no Archive.org
+ARCHIVE_BASE_URL = "https://archive.org/download/seu-identificador-aqui"
 
-    if not resposta_tg.get('ok'):
-      return 'Vídeo não encontrado no Telegram', 404
-
-    file_path = resposta_tg['result']['file_path']
-    telegram_download_url = (
-        f'https://api.telegram.org/file/bot{token}/{file_path}'
-    )
-
-    url_capa = url_for(
-        'static', filename=f'capas/{nome_serie}.jpg'
-    )  # ou o padrão
-
-    return render_template(
-        'player.html',
-        url_video=telegram_download_url,
-        titulo=nome_serie.replace('_', ' ').title(),
-        proximo=None,
-        nome_serie=nome_serie,
-        capa=url_capa,
-    )
-  else:
-    # Caso seja um arquivo de vídeo local antigo
-    caminho_midia = f'videos/{nome_serie}/{video_atual}'
-    url_video_real = url_for('static', filename=caminho_midia)
+@app.route('/video/<nome_serie>/<arquivo_video>')
+def ver_video(nome_serie, arquivo_video):
+    # Monta o link direto do Archive.org automaticamente
+    url_video_real = f"{ARCHIVE_BASE_URL}/{arquivo_video}"
+    
     url_capa = url_for('static', filename=f'capas/{nome_serie}.jpg')
 
     return render_template(
         'player.html',
         url_video=url_video_real,
-        titulo=video_atual.replace('_', ' ')
-        .replace('.mp4', '')
-        .replace('.mkv', ''),
+        titulo=arquivo_video.replace('_', ' ').replace('.mp4', '').replace('.mkv', ''),
         proximo=None,
         nome_serie=nome_serie,
-        capa=url_capa,
+        capa=url_capa
     )
 
 @app.route('/trocar_capa/<nome_base>', methods=['POST'])
