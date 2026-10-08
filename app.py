@@ -327,8 +327,8 @@ def adicionar():
 
 def enviar_arquivo_para_telegram(caminho_arquivo, titulo_video):
     """Envia o arquivo de vídeo ou zip de forma silenciosa para o canal do Telegram e retorna o file_id"""
-    token = os.environ.get('TELEGRAM_BOT_TOKEN')
-    canal_id = os.environ.get('TELEGRAM_CHANNEL_ID')
+    token = os.environ.get('7905838078:AAHLkRxtsTWA9gGdS2osdd8m7Md1e_JxWOQ')
+    canal_id = os.environ.get('-1004496261629')
     
     if not token or not canal_id:
         print("❌ Token ou Canal do Telegram não configurados nas variáveis de ambiente.")
@@ -443,7 +443,7 @@ def ver_video(nome_serie, video_atual):
 
 def obter_url_direta_telegram(file_id):
     """Pega o file_id do banco e solicita ao Telegram um link de download direto válido"""
-    token = os.environ.get('TELEGRAM_BOT_TOKEN')
+    token = os.environ.get('7905838078:AAHLkRxtsTWA9gGdS2osdd8m7Md1e_JxWOQ')
     url_file_info = f"https://api.telegram.org/bot{token}/getFile?file_id={file_id}"
     
     try:
