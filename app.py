@@ -463,11 +463,11 @@ def ver_serie(nome_serie):
 
 @app.route('/video/<nome_serie>/<video_atual>')
 def ver_video(nome_serie, video_atual):
-  # Se for o File ID do Telegram
-  if video_atual.startswith('BAACAg') or len(video_atual) > 30:
-    token = os.environ.get('TELEGRAM_BOT_TOKEN', TELEGRAM_BOT_TOKEN)
+  token = os.environ.get('TELEGRAM_BOT_TOKEN', TELEGRAM_BOT_TOKEN)
 
-    # Pede o link direto do arquivo para a API do Telegram
+  # Se o 'video_atual' for um File ID do Telegram (começa com BAACAg...)
+  if video_atual.startswith('BAACAg') or len(video_atual) > 30:
+    # Pede o link de streaming direto para a API do Telegram
     get_file_url = (
         f'https://api.telegram.org/bot{token}/getFile?file_id={video_atual}'
     )
@@ -481,9 +481,10 @@ def ver_video(nome_serie, video_atual):
         f'https://api.telegram.org/file/bot{token}/{file_path}'
     )
 
-    url_capa = url_for('static', filename=f'capas/{nome_serie}.jpg')
+    url_capa = url_for(
+        'static', filename=f'capas/{nome_serie}.jpg'
+    )  # ou o padrão
 
-    # Em vez de redirecionar, renderizamos o player e passamos a URL do Telegram para ele!
     return render_template(
         'player.html',
         url_video=telegram_download_url,
@@ -492,9 +493,8 @@ def ver_video(nome_serie, video_atual):
         nome_serie=nome_serie,
         capa=url_capa,
     )
-
   else:
-    # Modo antigo para arquivos locais (se houver)
+    # Caso seja um arquivo de vídeo local antigo
     caminho_midia = f'videos/{nome_serie}/{video_atual}'
     url_video_real = url_for('static', filename=caminho_midia)
     url_capa = url_for('static', filename=f'capas/{nome_serie}.jpg')
