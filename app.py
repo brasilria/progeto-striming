@@ -332,48 +332,47 @@ def adicionar():
     return redirect('/')
 
 def enviar_arquivo_para_telegram(caminho_arquivo, titulo_video):
-    """Envia o arquivo de vídeo ou zip para o canal do Telegram e retorna o file_id correto"""
-    token = os.environ.get('TELEGRAM_BOT_TOKEN', TELEGRAM_BOT_TOKEN)
-    canal_id = os.environ.get('TELEGRAM_CHANNEL_ID', TELEGRAM_CHANNEL_ID)
-    
-    if not token or not canal_id:
-        print("❌ Token ou Canal do Telegram não configurados nas variáveis de ambiente.")
-        return None
+  """Envia um vídeo real de forma nativa para o canal do Telegram e retorna o file_id"""
+  token = os.environ.get('TELEGRAM_BOT_TOKEN', TELEGRAM_BOT_TOKEN)
+  canal_id = os.environ.get('TELEGRAM_CHANNEL_ID', TELEGRAM_CHANNEL_ID)
 
-    url = f"https://api.telegram.org/bot{token}/sendDocument"
-    
-    try:
-        with open(caminho_arquivo, 'rb') as arquivo:
-            payload = {
-                'chat_id': canal_id,
-                'caption': f"Backup PobreFlix: {titulo_video}"
-            }
-            files = {'document': arquivo}
-            resposta = requests.post(url, data=payload, files=files)
-            
-            print(f"Status Telegram: {resposta.status_code}")
-            
-            if resposta.status_code == 200:
-                dados_json = resposta.json()
-                resultado = dados_json.get('result', {})
-                
-                # Tenta pegar o file_id dependendo de como o Telegram processou a mídia
-                if 'document' in resultado:
-                    file_id = resultado['document']['file_id']
-                elif 'video' in resultado:
-                    file_id = resultado['video']['file_id']
-                else:
-                    print("❌ O Telegram respondeu 200, mas nenhuma chave de arquivo válida foi encontrada.")
-                    return None
-                    
-                print(f"✅ File ID capturado com sucesso: {file_id}")
-                return file_id
-            else:
-                print(f"❌ Erro ao enviar para o Telegram: {resposta.text}")
-                return None
-    except Exception as e:
-        print(f"❌ Erro na requisição do Telegram: {e}")
+  if not token or not canal_id:
+    print('❌ Token ou Canal do Telegram não configurados.')
+    return None
+
+  # MUDANÇA CRUCIAL: Usar sendVideo em vez de sendDocument para vídeos!
+  url = f'https://api.telegram.org/bot{token}/sendVideo'
+
+  try:
+    with open(caminho_arquivo, 'rb') as arquivo:
+      payload = {'chat_id': canal_id, 'caption': f'PobreFlix: {titulo_video}'}
+      # A chave do dicionário passa a ser 'video' para o Telegram tratar como mídia nativa
+      files = {'video': arquivo}
+      resposta = requests.post(url, data=payload, files=files)
+
+      print(f'Status Telegram: {resposta.status_code}')
+
+      if resposta.status_code == 200:
+        dados_json = resposta.json()
+        resultado = dados_json.get('result', {})
+
+        # Como usamos sendVideo, o Telegram vai retornar obrigatoriamente dentro de 'video'
+        if 'video' in resultado:
+          file_id = resultado['video']['file_id']
+          print(f'✅ File ID de vídeo capturado com sucesso: {file_id}')
+          return file_id
+        else:
+          print(
+              '❌ O Telegram respondeu 200, mas a chave de vídeo não veio no'
+              ' formato esperado.'
+          )
+          return None
+      else:
+        print(f'❌ Erro ao enviar vídeo para o Telegram: {resposta.text}')
         return None
+  except Exception as e:
+    print(f'❌ Erro na requisição do Telegram: {e}')
+    return None
 
 def obter_url_direta_telegram(file_id):
     """Pega o file_id do banco e solicita ao Telegram um link de download direto válido"""
