@@ -482,8 +482,17 @@ def ver_video(nome_serie, video_atual):
         f'https://api.telegram.org/file/bot{token}/{file_path}'
     )
 
-    # Redireciona o player do usuário direto para a CDN do Telegram
-    return redirect(telegram_download_url)
+    url_capa = url_for('static', filename=f'capas/{nome_serie}.jpg')
+
+    # Em vez de redirecionar, renderizamos o player e passamos a URL do Telegram para ele!
+    return render_template(
+        'player.html',
+        url_video=telegram_download_url,
+        titulo=nome_serie.replace('_', ' ').title(),
+        proximo=None,
+        nome_serie=nome_serie,
+        capa=url_capa,
+    )
 
   else:
     # Modo antigo para arquivos locais (se houver)
