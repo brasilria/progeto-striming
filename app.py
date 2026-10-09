@@ -1,9 +1,7 @@
-from flask import Flask, render_template, request, redirect, make_response, url_for, jsonify, send_from_directory, session, Response, abort
+from flask import Flask, render_template, request, redirect, url_for, jsonify, session, Response, abort
 import sqlite3
 import os
-import zipfile
 import shutil
-import requests
 from werkzeug.utils import secure_filename
 import yt_dlp
 import re
@@ -16,8 +14,8 @@ app.config['THUMBNAIL_FOLDER'] = 'static/capas'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['THUMBNAIL_FOLDER'], exist_ok=True)
 
-TELEGRAM_BOT_TOKEN = "7905838078:AAHLkRxtsTWA9gGdS2osdd8m7Md1e_JxWOQ"
-TELEGRAM_CHANNEL_ID = "-1004411648715"
+# URL base do seu item no Archive.org (Substitua pelo identificador correto da sua pasta lá)
+ARCHIVE_BASE_URL = "https://archive.org/download/seu-identificador-aqui"
 
 def usando_postgres():
     db_url = os.environ.get('DATABASE_URL', '')
@@ -79,7 +77,7 @@ def init_db():
                 classificacao TEXT,
                 conta_id INTEGER,
                 usuario_id INTEGER,
-                eh_video_unico INTEGER DEFAULT 0,
+                eh_video_unico INTEGER DEFAULT 1,
                 primeiro_video TEXT,
                 FOREIGN KEY (conta_id) REFERENCES contas(id)
             )
@@ -126,7 +124,7 @@ def init_db():
                 classificacao TEXT,
                 conta_id INTEGER,
                 usuario_id INTEGER,
-                eh_video_unico INTEGER DEFAULT 0,
+                eh_video_unico INTEGER DEFAULT 1,
                 primeiro_video TEXT,
                 FOREIGN KEY (conta_id) REFERENCES contas(id)
             )
@@ -193,7 +191,7 @@ def cadastro():
             cursor.close()
             conn.close()
             return redirect(url_for('login'))
-        except Exception as e:
+        except Exception:
             return render_template('cadastro.html', erro="Este e-mail já está cadastrado ou ocorreu um erro.")
             
     return render_template('cadastro.html')
@@ -279,20 +277,9 @@ def index():
         item = dict(s)
         if not item.get('capa') or item['capa'] == 'None': 
             item['capa'] = 'default.jpg'
-        
-        caminho_pasta = os.path.join(app.config['UPLOAD_FOLDER'], item['arquivo'] if item.get('arquivo') else '')
-        if item.get('arquivo') and os.path.isdir(caminho_pasta):
-            arquivos = sorted([f for f in os.listdir(caminho_pasta) if f.lower().endswith(('.mp4', '.mkv', '.webm'))])
-            if arquivos:
-                item['eh_video_unico'] = (item.get('eh_video_unico') == 1) or (len(arquivos) == 1)
-                item['primeiro_video'] = arquivos[0]
-            else:
-                item['eh_video_unico'] = False
-                item['primeiro_video'] = None
-        else:
-            item['eh_video_unico'] = True
-            item['primeiro_video'] = item.get('arquivo')
-        
+            
+        item['eh_video_unico'] = True
+        item['primeiro_video'] = item.get('arquivo')
         lista_processada.append(item)
 
     return render_template('index.html', series=lista_processada)
@@ -304,10 +291,10 @@ def adicionar():
 
     nome = request.form.get('nome')
     descricao = request.form.get('descricao')
-    arquivo = request.files.get('arquivo')
+    arquivo_nome = request.form.get('arquivo_nome') # Nome do arquivo no Archive.org ou URL completa
 
-    if not nome or not arquivo or arquivo.filename == '':
-        return "Nome e arquivo de vídeo/zip válido são obrigatórios", 400
+    if not nome or not arquivo_nome:
+        return "Nome e referência do arquivo de vídeo são obrigatórios", 400
 
     conn = get_db_connection()
     cursor = criar_cursor(conn)
@@ -320,41 +307,15 @@ def adicionar():
         return "Perfil inválido ou desconectado.", 400
     
     usuario_id = perfil_atual['id']
-    cursor.close()
-    conn.close()
 
     nome_seguro = secure_filename(nome.lower().replace(" ", "_"))
     caminho_db_capa = f"{nome_seguro}.jpg"
-    pasta_final = os.path.join(app.config['UPLOAD_FOLDER'], nome_seguro)
-    os.makedirs(pasta_final, exist_ok=True)
-    
-    extensao = arquivo.filename.rsplit('.', 1)[-1].lower()
-    caminho_temporario = os.path.join(pasta_final, secure_filename(arquivo.filename))
 
-    if extensao in ['zip', 'mp4', 'mkv', 'webm']:
-        try:
-            arquivo.save(caminho_temporario)
-        except Exception as e:
-            if os.path.exists(pasta_final): shutil.rmtree(pasta_final)
-            return f"Erro no salvamento do arquivo temporário: {e}", 500
-
-        print(f"📤 Enviando '{nome}' para o canal do Telegram...")
-        file_id_telegram = enviar_arquivo_para_telegram(caminho_temporario, nome)
-        
-        if os.path.exists(caminho_temporario):
-            os.remove(caminho_temporario)
-
-        if not file_id_telegram:
-            return "Erro: Não foi possível armazenar o arquivo no Telegram. Verifique o Token e o ID do Canal.", 500
-    else:
-        return "Extensão inválida. Envie arquivos de vídeo diretos ou um pacote .zip.", 400
-
-    conn = get_db_connection()
-    cursor = criar_cursor(conn)
     executar_query(cursor, '''
         INSERT INTO series (nome, descricao, arquivo, capa, conta_id, usuario_id, eh_video_unico) 
         VALUES (%s, %s, %s, %s, %s, %s, 1)
-    ''', (nome, descricao, file_id_telegram, caminho_db_capa, session['conta_id'], usuario_id))
+    ''', (nome, descricao, arquivo_nome, caminho_db_capa, session['conta_id'], usuario_id))
+    
     conn.commit()
     cursor.close()
     conn.close()
@@ -365,63 +326,12 @@ def adicionar():
 
     return redirect('/')
 
-def enviar_arquivo_para_telegram(caminho_arquivo, titulo_video):
-    token = os.environ.get('TELEGRAM_BOT_TOKEN', TELEGRAM_BOT_TOKEN)
-    canal_id = os.environ.get('TELEGRAM_CHANNEL_ID', TELEGRAM_CHANNEL_ID)
-
-    if not token or not canal_id:
-        print('❌ Token ou Canal do Telegram não configurados.')
-        return None
-
-    url = f'https://api.telegram.org/bot{token}/sendVideo'
-
-    try:
-        with open(caminho_arquivo, 'rb') as arquivo:
-            payload = {'chat_id': canal_id, 'caption': f'PobreFlix: {titulo_video}'}
-            files = {'video': arquivo}
-            resposta = requests.post(url, data=payload, files=files)
-
-            if resposta.status_code == 200:
-                dados_json = resposta.json()
-                resultado = dados_json.get('result', {})
-
-                if 'video' in resultado:
-                    file_id = resultado['video']['file_id']
-                    return file_id
-            return None
-    except Exception as e:
-        print(f'❌ Erro na requisição do Telegram: {e}')
-        return None
-
-def obter_url_direta_telegram(file_id):
-    token = os.environ.get('TELEGRAM_BOT_TOKEN', TELEGRAM_BOT_TOKEN)
-    if not token:
-        return None
-        
-    url_file_info = f"https://api.telegram.org/bot{token}/getFile?file_id={file_id}"
-    try:
-        resposta = requests.get(url_file_info)
-        if resposta.status_code == 200:
-            caminho_no_servidor = resposta.json()['result']['file_path']
-            return f"https://api.telegram.org/file/bot{token}/{caminho_no_servidor}"
-    except Exception as e:
-        print(f"❌ Erro ao buscar link do Telegram: {e}")
-    return None
-
 @app.route('/deletar_serie_completa/<int:id_filme>', methods=['DELETE'])
 def deletar_serie_completa(id_filme):
     conn = get_db_connection()
     cursor = criar_cursor(conn)
-    executar_query(cursor, "SELECT arquivo FROM series WHERE id = %s", (id_filme,))
-    resultado = cursor.fetchone()
-    
-    if resultado:
-        arquivo_nome = resultado['arquivo']
-        caminho_pasta = os.path.join(app.config['UPLOAD_FOLDER'], arquivo_nome)
-        if os.path.exists(caminho_pasta): shutil.rmtree(caminho_pasta)
-        executar_query(cursor, "DELETE FROM series WHERE id = %s", (id_filme,))
-        conn.commit()
-        
+    executar_query(cursor, "DELETE FROM series WHERE id = %s", (id_filme,))
+    conn.commit()
     cursor.close(); conn.close()
     return jsonify({"status": "sucesso"}), 200
 
@@ -444,43 +354,14 @@ def deletar_capa_filme(id_filme):
     conn.close()
     return jsonify({"status": "sucesso"}), 200
 
-@app.route('/deletar_episodio/<nome_serie>/<nome_episodio>', methods=['DELETE'])
-def deletar_episodio(nome_serie, nome_episodio):
-    if 'conta_id' not in session: return jsonify({"status": "erro"}), 401
-    
-    pasta_serie = os.path.join(app.config['UPLOAD_FOLDER'], nome_serie)
-    caminho_arquivo = os.path.join(pasta_serie, nome_episodio)
-    
-    if os.path.exists(caminho_arquivo):
-        os.remove(caminho_arquivo)
-        return jsonify({"status": "sucesso"}), 200
-    return jsonify({"status": "erro", "mensagem": "Arquivo não encontrado"}), 404
-
-@app.route('/adicionar_episodio/<nome_serie>', methods=['POST'])
-def adicionar_episodio(nome_serie):
-    if 'conta_id' not in session: return redirect(url_for('login'))
-    
-    arquivo = request.files.get('novo_episodio')
-    if arquivo and arquivo.filename != '':
-        pasta_serie = os.path.join(app.config['UPLOAD_FOLDER'], nome_serie)
-        os.makedirs(pasta_serie, exist_ok=True)
-        caminho_salvo = os.path.join(pasta_serie, secure_filename(arquivo.filename))
-        arquivo.save(caminho_salvo)
-        
-    return redirect(url_for('ver_serie', nome_serie=nome_serie))
-
-@app.route('/serie/<nome_serie>')
-def ver_serie(nome_serie):
-    caminho_completo = os.path.join(app.config['UPLOAD_FOLDER'], nome_serie)
-    if not os.path.isdir(caminho_completo): return redirect('/')
-
-    episodios = sorted([f for f in os.listdir(caminho_completo) if f.lower().endswith(('mp4', 'mkv', 'webm'))])
-    nome_exibicao = nome_serie.replace("_", " ")
-    return render_template('serie.html', nome=nome_exibicao, episodios=episodios, nome_serie=nome_serie)
-
-@app.route('/video/<nome_serie>/<arquivo_video>')
+@app.route('/video/<nome_serie>/<path:arquivo_video>')
 def ver_video(nome_serie, arquivo_video):
-    url_video_real = url_for('static', filename=f'videos/{nome_serie}/{arquivo_video}')
+    # Se já for uma URL completa, usa direto; senão, monta com o Archive.org
+    if arquivo_video.startswith('http://') or arquivo_video.startswith('https://'):
+        url_video_real = arquivo_video
+    else:
+        url_video_real = f"{ARCHIVE_BASE_URL}/{arquivo_video}"
+        
     url_capa = url_for('static', filename=f'capas/{nome_serie}.jpg')
 
     return render_template(
@@ -576,7 +457,7 @@ def publicar_bot():
         if not url_video:
             return jsonify({"status": "erro", "mensagem": "A URL do vídeo é obrigatória"}), 400
 
-        capa = 'https://img.icons8.com/color/512/telegram-app.png'
+        capa = 'https://img.icons8.com/color/512/globe.png'
         if "youtube.com" in url_video or "youtu.be" in url_video:
             try:
                 video_id = url_video.split("v=")[1].split("&")[0] if "v=" in url_video else url_video.split("/")[-1].split("?")[0]
@@ -619,21 +500,16 @@ def assistir(video_id):
 
     if video:
         item = dict(video)
-        url_banco = None
+        url_banco = item.get('url_video') or item.get('arquivo')
         
-        if 'url_video' in item and item['url_video']:
-            url_banco = item['url_video']
-        elif 'arquivo' in item and item['arquivo']:
-            val_arquivo = item['arquivo']
-            if not val_arquivo.endswith(('.mp4', '.mkv', '.webm', '.zip')) and len(val_arquivo) > 20:
-                url_banco = obter_url_direta_telegram(val_arquivo)
-            else:
-                url_banco = url_for('static', filename=f"videos/{val_arquivo}")
-
         if not url_banco:
             return "Erro: Link ou arquivo vazio.", 400
 
-        titulo_video = item['nome'] if 'nome' in item else item['titulo']
+        # Se for um nome simples de arquivo do Archive.org, converte para URL real
+        if not url_banco.startswith('http://') and not url_banco.startswith('https://'):
+            url_banco = f"{ARCHIVE_BASE_URL}/{url_banco}"
+
+        titulo_video = item.get('nome') or item.get('titulo', 'Vídeo')
         return render_template('player2.html', url_video=url_banco, titulo=titulo_video)
     
     return "Erro 404", 404
@@ -673,7 +549,7 @@ def gerar_link_direto():
         return jsonify({'success': False, 'error': 'URL ausente'}), 400
 
     if not url_original.startswith('http://') and not url_original.startswith('https://'):
-        caminho_local = url_for('static', filename=f'videos/{url_original}')
+        caminho_local = f"{ARCHIVE_BASE_URL}/{url_original}"
         return jsonify({'success': True, 'url': caminho_local, 'is_youtube': False})
 
     if 'youtube.com' in url_original or 'youtu.be' in url_original:
