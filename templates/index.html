@@ -327,12 +327,13 @@
 
     <div id="modal" class="modal">
         <div class="modal-conteudo">
-            <h2>Adicionar Conteúdo</h2>
-            <form action="/adicionar" method="POST" enctype="multipart/form-data">
+            <h2>Adicionar Conteúdo (Archive.org)</h2>
+            <form action="/adicionar" method="POST">
                 <input type="text" name="nome" placeholder="Nome da Série/Filme" required>
                 <textarea name="descricao" placeholder="Breve descrição..." rows="3"></textarea>
-                <input type="file" name="arquivo" accept="video/*,.zip" required>
-                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <input type="text" name="arquivo_nome" placeholder="Nome do arquivo (ex: filme.mp4) ou URL" required>
+                <small style="color: #aaa; display: block; margin-bottom: 15px;">Insira o nome do arquivo hospedado no seu item do Archive.org ou a URL direta do vídeo.</small>
+                <div style="display: flex; gap: 10px;">
                     <button type="submit">Salvar</button>
                     <button type="button" onclick="fecharModal()" style="background: #333;">Sair</button>
                 </div>
