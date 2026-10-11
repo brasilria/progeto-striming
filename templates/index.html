@@ -461,7 +461,6 @@
             const videosLocais = JSON.parse(localStorage.getItem('pobreflix_locais') || '[]');
             
             videosLocais.forEach(video => {
-                // Nota: URLs tipo blob: expirAM ao fechar o navegador por segurança do sistema
                 const cardHtml = `
                     <div class="bloco-serie" id="local-${video.id}">
                         <div class="capa-container" style="background: #222; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 220px; text-align: center; padding: 10px; box-sizing: border-box;">
@@ -471,7 +470,9 @@
                         </div>
                         <div class="info">
                             <h3>${video.nome}</h3>
-                            <button onclick="assistirLocal('${video.url}', '${video.nome}')" class="btn-ver" style="background: #e50914; border: none; cursor: pointer; width: 100%;">Assistir Local</button>
+                            <!-- Mudamos para disparar o seletor rápido ou input direto caso o blob tenha expirado -->
+                            <button onclick="dispararPlayerLocal('${video.id}', '${video.nome}')" class="btn-ver" style="background: #e50914; border: none; cursor: pointer; width: 100%;">Assistir Local</button>
+                            <input type="file" id="input-file-${video.id}" accept="video/*" style="display: none;" onchange="carregarEIniciarVideo(event, '${video.nome}')">
                         </div>
                     </div>
                 `;
@@ -479,7 +480,22 @@
             });
         });
         
-        function assistirLocal(urlBlob, titulo) {
+        // Como os blobs de arquivos locais expiram ao recarregar a página por segurança do navegador,
+        // pedimos para o usuário selecionar o arquivo correspondente na primeira reprodução da sessão.
+        function dispararPlayerLocal(id, titulo) {
+            const inputOculto = document.getElementById(`input-file-${id}`);
+            inputOculto.click();
+        }
+        
+        function carregarEIniciarVideo(event, titulo) {
+            const arquivo = event.target.files[0];
+            if (!arquivo) return;
+        
+            const urlVideoLocal = URL.createObjectURL(arquivo);
+            abrirModalPlayerReal(urlVideoLocal, titulo);
+        }
+        
+        function abrirModalPlayerReal(urlBlob, titulo) {
             const antigo = document.getElementById('modalPlayerLocal');
             if (antigo) antigo.remove();
         
@@ -499,15 +515,8 @@
             document.body.insertAdjacentHTML('beforeend', modalHtml);
         
             const videoEl = document.getElementById('videoPlayerElement');
-            
-            // Captura erros específicos de decodificação ou formato do navegador
             videoEl.onerror = function() {
-                const erroCodigo = videoEl.error ? videoEl.error.code : 'Desconhecido';
-                let msg = "Erro ao carregar o vídeo.";
-                if (erroCodigo === 3) msg = "Erro de decodificação: O navegador não suporta o formato/codec deste arquivo.";
-                if (erroCodigo === 4) msg = "Erro de formato: O arquivo de vídeo não é compatível.";
-                document.getElementById('statusErroVideo').innerText = msg + " (Código: " + erroCodigo + ")";
-                console.error("Erro no vídeo HTML5:", videoEl.error);
+                document.getElementById('statusErroVideo').innerText = "Erro: O navegador não conseguiu decodificar este formato de vídeo. Certifique-se de usar arquivos .mp4.";
             };
         }
         
