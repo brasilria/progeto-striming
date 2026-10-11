@@ -548,16 +548,38 @@ def deletar_feed(video_id):
 
 @app.route('/gerar_link_direto', methods=['POST'])
 def gerar_link_direto():
+    if 'conta_id' not in session or 'usuario_logado' not in session:
+        return jsonify({'success': False, 'error': 'Não autorizado'}), 401
+
     data = request.json
     url_original = data.get('url')
-    ...
-    ydl_opts = {'format': 'best[ext=mp4]/best', 'quiet': True, 'noplaylist': True}
+
+    if not url_original:
+        return jsonify({'success': False, 'error': 'URL não informada'}), 400
+
+    ydl_opts = {
+        'format': 'best[ext=mp4]/best',
+        'quiet': True,
+        'noplaylist': True,
+        # Adiciona user-agent para evitar bloqueios básicos do YouTube
+        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    }
+
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url_original, download=False)
-            return jsonify({'success': True, 'url': info.get('url'), 'is_youtube': False})
+            url_direta = info.get('url')
+            if not url_direta:
+                return jsonify({'success': False, 'error': 'Não foi possível extrair o link de streaming.'}), 500
+            
+            return jsonify({'success': True, 'url': url_direta, 'is_youtube': True})
+            
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        print(f"Erro no yt-dlp ao processar link: {e}")
+        return jsonify({
+            'success': False, 
+            'error': 'O YouTube bloqueou a extração neste servidor gratuito. Tente usar um link direto em MP4 ou adicione o vídeo pela sua galeria local.'
+        }), 500
 
 @app.route('/deletar_perfil/<int:id>', methods=['POST'])
 def deletar_perfil(id):
