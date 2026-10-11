@@ -15,7 +15,7 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['THUMBNAIL_FOLDER'], exist_ok=True)
 
 # URL base do seu item no Archive.org (Substitua pelo identificador correto da sua pasta lá)
-ARCHIVE_BASE_URL = "https://archive.org/download/seu-identificador-aqui"
+ARCHIVE_BASE_URL = "https://archive.org/download/top-viral-phonk-funk-playlist-fon-faa-tiktok-phonk-2025-faa-360-p"
 
 def usando_postgres():
     db_url = os.environ.get('DATABASE_URL', '')
