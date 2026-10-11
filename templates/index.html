@@ -384,8 +384,8 @@
             }
         }
     
-        // Tratamento para links externos (como YouTube) com aviso amigável
-        function processarLinkExterno(urlDigitada) {
+        // Tratamento inteligente para links do YouTube/Online
+        function processarLinkExterno(urlDigitada, nome, descricao) {
             fetch('/gerar_link_direto', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -399,7 +399,8 @@
             })
             .then(data => {
                 if (data.success) {
-                    console.log("Link gerado com sucesso:", data.url);
+                    fecharModal();
+                    location.reload();
                 } else {
                     alert("Erro: " + data.error);
                 }
@@ -410,14 +411,16 @@
             });
         }
     
-        // Salva o arquivo de vídeo de verdade no banco interno do navegador (IndexedDB)
+        // Função unificada de salvamento (Galeria ou Link Online)
         function salvarVideoLocal(event) {
             event.preventDefault();
             
             const nome = document.getElementById('nomeVideo').value;
             const descricao = document.getElementById('descVideo').value;
             const arquivoInput = document.getElementById('arquivoLocal');
+            const linkInput = document.getElementById('linkVideo');
             
+            // Se o usuário selecionou um arquivo local
             if (arquivoInput.files.length > 0) {
                 const arquivo = arquivoInput.files[0];
                 const idUnico = Date.now();
@@ -443,11 +446,12 @@
                 request.onerror = function(event) {
                     alert("Erro ao salvar o vídeo no navegador: " + event.target.error);
                 };
+            } 
+            // Se o usuário digitou um link online/YouTube
+            else if (linkInput && linkInput.value.trim() !== "") {
+                processarLinkExterno(linkInput.value, nome, descricao);
             } else {
-                const inputLink = document.getElementById('linkVideo');
-                if (inputLink && inputLink.value) {
-                    processarLinkExterno(inputLink.value);
-                }
+                alert("Selecione um arquivo de vídeo ou insira um link online.");
             }
         }
     
