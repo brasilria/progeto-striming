@@ -347,10 +347,28 @@
     </div>
     
     <script>
+        let db;
+        const dbRequest = indexedDB.open("PobreflixLocalDB", 1);
+    
+        dbRequest.onupgradeneeded = function(event) {
+            db = event.target.result;
+            if (!db.objectStoreNames.contains("videos")) {
+                db.createObjectStore("videos", { keyPath: "id" });
+            }
+        };
+    
+        dbRequest.onsuccess = function(event) {
+            db = event.target.result;
+            carregarVideosLocais();
+        };
+    
+        dbRequest.onerror = function(event) {
+            console.error("Erro no banco de dados local:", event.target.error);
+        };
+    
         function abrirModal() { document.getElementById('modal').style.display = 'block'; }
         function fecharModal() { document.getElementById('modal').style.display = 'none'; }
         
-        // FUNÇÃO PARA CONTROLAR A ABERTURA/FECHAMENTO DO MENU LATERAL
         function alternarMenu(abrir) {
             const menu = document.getElementById('barraLateral');
             const overlay = document.getElementById('overlayMenu');
@@ -362,7 +380,8 @@
                 overlay.style.display = 'none';
             }
         }
-
+    
+        // Salva o arquivo de vídeo de verdade no banco interno do navegador
         function salvarVideoLocal(event) {
             event.preventDefault();
             
@@ -372,133 +391,68 @@
             
             if (arquivoInput.files.length > 0) {
                 const arquivo = arquivoInput.files[0];
+                const idUnico = Date.now();
                 
-                // Cria uma URL temporária local para o vídeo rodar no player
-                const urlVideoLocal = URL.createObjectURL(arquivo);
+                const transacao = db.transaction(["videos"], "readwrite");
+                const store = transacao.objectStore("videos");
                 
-                // Salvamos os dados básicos na memória do navegador (localStorage) para montar a sua biblioteca
                 const novoItem = {
-                    id: Date.now(),
+                    id: idUnico,
                     nome: nome,
                     descricao: descricao,
-                    url: urlVideoLocal,
+                    arquivoBlob: arquivo,
                     tamanho: (arquivo.size / (1024*1024)).toFixed(1) + " MB"
                 };
                 
-                let meusVideos = JSON.parse(localStorage.getItem('pobreflix_locais') || '[]');
-                meusVideos.push(novoItem);
-                localStorage.setItem('pobreflix_locais', JSON.stringify(meusVideos));
+                const request = store.add(novoItem);
                 
-                fecharModal();
-                location.reload(); // Recarrega para exibir o novo vídeo na tela
+                request.onsuccess = function() {
+                    fecharModal();
+                    location.reload();
+                };
+                
+                request.onerror = function(event) {
+                    alert("Erro ao salvar o vídeo no navegador: " + event.target.error);
+                };
             }
         }
-
-        function mostrarCarregamento() {
-            const btn = document.getElementById('btnSalvarModal');
-            btn.innerText = "Salvando...";
-            btn.style.opacity = "0.7";
-            btn.disabled = true;
-        }
-
-        function deletarConteudoLocal(id) {
-            if (confirm("Deseja apagar TUDO (vídeos e capa) do servidor?")) {
-                // MUDAMOS A ROTA AQUI PARA A NOVA FUNÇÃO COMPLETA
-                fetch(`/deletar_serie_completa/${id}`, { 
-                    method: 'DELETE' 
-                })
-                .then(response => {
-                    if (response.ok) {
-                        const elemento = document.getElementById(`serie-${id}`);
-                        if (elemento) {
-                            elemento.remove();
-                            location.reload(); // Recarrega para limpar a lista
-                        }
-                    } else {
-                        alert("Erro ao excluir os arquivos físicos.");
-                    }
-                })
-                .catch(error => console.error('Erro:', error));
-            }
-        }
-
-        function filtrarVideos() {
-            let input = document.getElementById('inputPesquisa').value.toLowerCase();
-            let cards = document.querySelectorAll('.bloco-serie'); 
-            cards.forEach(card => {
-                let titulo = card.querySelector('h3').innerText.toLowerCase();
-                card.style.display = titulo.includes(input) ? "block" : "none";
-            });
-        }
-    </script>
     
-    <script>
-        // CARROSSEL DE DESLIZE CONTÍNUO (EFEITO NETFLIX)
-        let slides = document.querySelectorAll('.slide-item');
-        let indiceAtual = 0;
-        const TEMPO_EXIBICAO = 14000; 
-
-        if (slides.length > 1) {
-            setInterval(() => {
-                slides[indiceAtual].classList.remove('ativo');
-                slides[indiceAtual].classList.add('saindo');
-                
-                let slideAnterior = indiceAtual;
-                indiceAtual = (indiceAtual + 1) % slides.length;
-                
-                slides[indiceAtual].classList.add('ativo');
-                
-                setTimeout(() => {
-                    slides[slideAnterior].classList.remove('saindo');
-                }, 1200);
-
-            }, TEMPO_EXIBICAO);
-        }
-    </script>
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
+        // Carrega os vídeos salvos do IndexedDB e desenha na tela
+        function carregarVideosLocais() {
+            if (!db) return;
             const gradeSeries = document.querySelector('.grade-series');
-            const videosLocais = JSON.parse(localStorage.getItem('pobreflix_locais') || '[]');
             
-            videosLocais.forEach(video => {
-                const cardHtml = `
-                    <div class="bloco-serie" id="local-${video.id}">
-                        <div class="capa-container" style="background: #222; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 220px; text-align: center; padding: 10px; box-sizing: border-box;">
-                            <span style="color: #fff; font-weight: bold; font-size: 14px; margin-bottom: 5px;">📱 ${video.nome}</span>
-                            <span style="color: #aaa; font-size: 12px;">(${video.tamanho})</span>
-                            <button class="btn-deletar-card" onclick="deletarVideoLocal(${video.id})" title="Excluir do Dispositivo">&times;</button>
+            const transacao = db.transaction(["videos"], "readonly");
+            const store = transacao.objectStore("videos");
+            const request = store.getAll();
+            
+            request.onsuccess = function(event) {
+                const videosLocais = event.target.result;
+                videosLocais.forEach(video => {
+                    const urlVideoLocal = URL.createObjectURL(video.arquivoBlob);
+                    
+                    const cardHtml = `
+                        <div class="bloco-serie" id="local-${video.id}">
+                            <div class="capa-container" style="background: #222; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 220px; text-align: center; padding: 10px; box-sizing: border-box;">
+                                <span style="color: #fff; font-weight: bold; font-size: 14px; margin-bottom: 5px;">📱 ${video.nome}</span>
+                                <span style="color: #aaa; font-size: 12px;">(${video.tamanho})</span>
+                                <button class="btn-deletar-card" onclick="deletarVideoLocal(${video.id})" title="Excluir do Dispositivo">&times;</button>
+                            </div>
+                            <div class="info">
+                                <h3>${video.nome}</h3>
+                                <button onclick="assistirLocal('${urlVideoLocal}', '${video.nome}')" class="btn-ver" style="background: #e50914; border: none; cursor: pointer; width: 100%;">Assistir</button>
+                            </div>
                         </div>
-                        <div class="info">
-                            <h3>${video.nome}</h3>
-                            <!-- Mudamos para disparar o seletor rápido ou input direto caso o blob tenha expirado -->
-                            <button onclick="dispararPlayerLocal('${video.id}', '${video.nome}')" class="btn-ver" style="background: #e50914; border: none; cursor: pointer; width: 100%;">Assistir Local</button>
-                            <input type="file" id="input-file-${video.id}" accept="video/*" style="display: none;" onchange="carregarEIniciarVideo(event, '${video.nome}')">
-                        </div>
-                    </div>
-                `;
-                gradeSeries.insertAdjacentHTML('afterbegin', cardHtml);
-            });
-        });
-        
-        // Como os blobs de arquivos locais expiram ao recarregar a página por segurança do navegador,
-        // pedimos para o usuário selecionar o arquivo correspondente na primeira reprodução da sessão.
-        function dispararPlayerLocal(id, titulo) {
-            const inputOculto = document.getElementById(`input-file-${id}`);
-            inputOculto.click();
+                    `;
+                    gradeSeries.insertAdjacentHTML('afterbegin', cardHtml);
+                });
+            };
         }
-        
-        function carregarEIniciarVideo(event, titulo) {
-            const arquivo = event.target.files[0];
-            if (!arquivo) return;
-        
-            const urlVideoLocal = URL.createObjectURL(arquivo);
-            abrirModalPlayerReal(urlVideoLocal, titulo);
-        }
-        
-        function abrirModalPlayerReal(urlBlob, titulo) {
+    
+        function assistirLocal(urlBlob, titulo) {
             const antigo = document.getElementById('modalPlayerLocal');
             if (antigo) antigo.remove();
-        
+    
             const modalHtml = `
                 <div id="modalPlayerLocal" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.95); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box;">
                     <div style="width: 100%; max-width: 900px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -513,13 +467,13 @@
             `;
             
             document.body.insertAdjacentHTML('beforeend', modalHtml);
-        
+    
             const videoEl = document.getElementById('videoPlayerElement');
             videoEl.onerror = function() {
-                document.getElementById('statusErroVideo').innerText = "Erro: O navegador não conseguiu decodificar este formato de vídeo. Certifique-se de usar arquivos .mp4.";
+                document.getElementById('statusErroVideo').innerText = "Erro: Formato de vídeo não suportado. Utilize arquivos no formato .mp4.";
             };
         }
-        
+    
         function fecharPlayerLocal() {
             const modal = document.getElementById('modalPlayerLocal');
             if (modal) {
@@ -528,15 +482,49 @@
                 modal.remove();
             }
         }
-        
+    
         function deletarVideoLocal(id) {
-            if (confirm("Deseja apagar este vídeo do seu painel local?")) {
-                let videosLocais = JSON.parse(localStorage.getItem('pobreflix_locais') || '[]');
-                videosLocais = videosLocais.filter(v => v.id !== id);
-                localStorage.setItem('pobreflix_locais', JSON.stringify(videosLocais));
-                const elemento = document.getElementById(`local-${id}`);
-                if (elemento) elemento.remove();
+            if (confirm("Deseja apagar este vídeo do armazenamento local?")) {
+                const transacao = db.transaction(["videos"], "readwrite");
+                const store = transacao.objectStore("videos");
+                const request = store.delete(Number(id));
+                
+                request.onsuccess = function() {
+                    const elemento = document.getElementById(`local-${id}`);
+                    if (elemento) elemento.remove();
+                };
             }
+        }
+    
+        function filtrarVideos() {
+            let input = document.getElementById('inputPesquisa').value.toLowerCase();
+            let cards = document.querySelectorAll('.bloco-serie'); 
+            cards.forEach(card => {
+                let titulo = card.querySelector('h3').innerText.toLowerCase();
+                card.style.display = titulo.includes(input) ? "block" : "none";
+            });
+        }
+    
+        // Carrossel de deslize contínuo
+        let slides = document.querySelectorAll('.slide-item');
+        let indiceAtual = 0;
+        const TEMPO_EXIBICAO = 14000; 
+    
+        if (slides.length > 1) {
+            setInterval(() => {
+                slides[indiceAtual].classList.remove('ativo');
+                slides[indiceAtual].classList.add('saindo');
+                
+                let slideAnterior = indiceAtual;
+                indiceAtual = (indiceAtual + 1) % slides.length;
+                
+                slides[indiceAtual].classList.add('ativo');
+                
+                setTimeout(() => {
+                    slides[slideAnterior].classList.remove('saindo');
+                }, 1200);
+    
+            }, TEMPO_EXIBICAO);
         }
     </script>
 </body>
