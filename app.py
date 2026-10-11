@@ -546,6 +546,8 @@ def deletar_feed(video_id):
     conn.close()
     return jsonify({"sucesso": True}), 200
 
+import re
+
 @app.route('/gerar_link_direto', methods=['POST'])
 def gerar_link_direto():
     if 'conta_id' not in session or 'usuario_logado' not in session:
@@ -557,11 +559,11 @@ def gerar_link_direto():
     if not url_original:
         return jsonify({'success': False, 'error': 'URL não informada'}), 400
 
+    # 1. Tenta extrair o link direto com o yt-dlp (para links normais ou streaming direto)
     ydl_opts = {
         'format': 'best[ext=mp4]/best',
         'quiet': True,
         'noplaylist': True,
-        # Adiciona user-agent para evitar bloqueios básicos do YouTube
         'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
     }
 
@@ -569,17 +571,25 @@ def gerar_link_direto():
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url_original, download=False)
             url_direta = info.get('url')
-            if not url_direta:
-                return jsonify({'success': False, 'error': 'Não foi possível extrair o link de streaming.'}), 500
-            
-            return jsonify({'success': True, 'url': url_direta, 'is_youtube': True})
-            
+            if url_direta:
+                return jsonify({'success': True, 'url': url_direta, 'is_embed': False})
     except Exception as e:
-        print(f"Erro no yt-dlp ao processar link: {e}")
-        return jsonify({
-            'success': False, 
-            'error': 'O YouTube bloqueou a extração neste servidor gratuito. Tente usar um link direto em MP4 ou adicione o vídeo pela sua galeria local.'
-        }), 500
+        print(f"Aviso: yt-dlp bloqueado no Render ({e}), ativando modo embed...")
+
+    # 2. Fallback inteligente: se o yt-dlp falhou (bloqueio do YouTube), extraímos o ID e usamos o embed oficial
+    youtube_regex = r'(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})'
+    match = re.search(youtube_regex, url_original)
+
+    if match:
+        video_id = match.group(1)
+        embed_url = f'https://www.youtube.com/embed/{video_id}?autoplay=1'
+        return jsonify({'success': True, 'url': embed_url, 'is_embed': True})
+
+    # Se não for YouTube e falhou no yt-dlp, retorna erro tratado
+    return jsonify({
+        'success': False, 
+        'error': 'Não foi possível processar este link externo. Tente um arquivo MP4 local.'
+    }), 500
 
 @app.route('/deletar_perfil/<int:id>', methods=['POST'])
 def deletar_perfil(id):
