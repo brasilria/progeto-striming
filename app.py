@@ -291,38 +291,43 @@ def adicionar():
 
     nome = request.form.get('nome')
     descricao = request.form.get('descricao')
-    arquivo_nome = request.form.get('arquivo_nome') # Nome do arquivo no Archive.org ou URL completa
+    arquivo_nome = request.form.get('arquivo_nome')
 
     if not nome or not arquivo_nome:
         return "Nome e referência do arquivo de vídeo são obrigatórios", 400
 
-    conn = get_db_connection()
-    cursor = criar_cursor(conn)
-    executar_query(cursor, 'SELECT id FROM usuarios WHERE nome = %s AND conta_id = %s', (session['usuario_logado'], session['conta_id']))
-    perfil_atual = cursor.fetchone()
-    
-    if not perfil_atual:
+    try:
+        conn = get_db_connection()
+        cursor = criar_cursor(conn)
+        
+        executar_query(cursor, 'SELECT id FROM usuarios WHERE nome = %s AND conta_id = %s', (session['usuario_logado'], session['conta_id']))
+        perfil_atual = cursor.fetchone()
+        
+        if not perfil_atual:
+            cursor.close()
+            conn.close()
+            return "Perfil inválido ou desconectado.", 400
+        
+        usuario_id = perfil_atual['id']
+        nome_seguro = secure_filename(nome.lower().replace(" ", "_"))
+        caminho_db_capa = f"{nome_seguro}.jpg"
+
+        executar_query(cursor, '''
+            INSERT INTO series (nome, descricao, arquivo, capa, conta_id, usuario_id, eh_video_unico) 
+            VALUES (%s, %s, %s, %s, %s, %s, 1)
+        ''', (nome, descricao, arquivo_nome, caminho_db_capa, session['conta_id'], usuario_id))
+        
+        conn.commit()
         cursor.close()
         conn.close()
-        return "Perfil inválido ou desconectado.", 400
-    
-    usuario_id = perfil_atual['id']
 
-    nome_seguro = secure_filename(nome.lower().replace(" ", "_"))
-    caminho_db_capa = f"{nome_seguro}.jpg"
+        caminho_capa_completo = os.path.join(app.config['THUMBNAIL_FOLDER'], caminho_db_capa)
+        if not os.path.exists(caminho_capa_completo):
+            open(caminho_capa_completo, 'a').close()
 
-    executar_query(cursor, '''
-        INSERT INTO series (nome, descricao, arquivo, capa, conta_id, usuario_id, eh_video_unico) 
-        VALUES (%s, %s, %s, %s, %s, %s, 1)
-    ''', (nome, descricao, arquivo_nome, caminho_db_capa, session['conta_id'], usuario_id))
-    
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-    caminho_capa_completo = os.path.join(app.config['THUMBNAIL_FOLDER'], caminho_db_capa)
-    if not os.path.exists(caminho_capa_completo):
-        open(caminho_capa_completo, 'a').close()
+    except Exception as e:
+        print(f"Erro ao adicionar vídeo: {e}")
+        return "Erro interno ao salvar o conteúdo.", 500
 
     return redirect('/')
 
