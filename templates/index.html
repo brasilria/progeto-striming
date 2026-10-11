@@ -363,6 +363,37 @@
             }
         }
 
+        function salvarVideoLocal(event) {
+            event.preventDefault();
+            
+            const nome = document.getElementById('nomeVideo').value;
+            const descricao = document.getElementById('descVideo').value;
+            const arquivoInput = document.getElementById('arquivoLocal');
+            
+            if (arquivoInput.files.length > 0) {
+                const arquivo = arquivoInput.files[0];
+                
+                // Cria uma URL temporária local para o vídeo rodar no player
+                const urlVideoLocal = URL.createObjectURL(arquivo);
+                
+                // Salvamos os dados básicos na memória do navegador (localStorage) para montar a sua biblioteca
+                const novoItem = {
+                    id: Date.now(),
+                    nome: nome,
+                    descricao: descricao,
+                    url: urlVideoLocal,
+                    tamanho: (arquivo.size / (1024*1024)).toFixed(1) + " MB"
+                };
+                
+                let meusVideos = JSON.parse(localStorage.getItem('pobreflix_locais') || '[]');
+                meusVideos.push(novoItem);
+                localStorage.setItem('pobreflix_locais', JSON.stringify(meusVideos));
+                
+                fecharModal();
+                location.reload(); // Recarrega para exibir o novo vídeo na tela
+            }
+        }
+
         function mostrarCarregamento() {
             const btn = document.getElementById('btnSalvarModal');
             btn.innerText = "Salvando...";
