@@ -381,7 +381,33 @@
             }
         }
     
-        // Salva o arquivo de vídeo de verdade no banco interno do navegador
+        // Tratamento para links externos (como YouTube) com aviso amigável
+        function processarLinkExterno(urlDigitada) {
+            fetch('/gerar_link_direto', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: urlDigitada })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("O servidor gratuito bloqueou a extração do YouTube.");
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    console.log("Link gerado com sucesso:", data.url);
+                } else {
+                    alert("Erro: " + data.error);
+                }
+            })
+            .catch(error => {
+                console.warn("Aviso:", error.message);
+                alert("O YouTube bloqueou a extração neste servidor na nuvem. Para assistir a vídeos sem travamentos, utilize a opção de adicionar direto da sua galeria local!");
+            });
+        }
+    
+        // Salva o arquivo de vídeo de verdade no banco interno do navegador (IndexedDB)
         function salvarVideoLocal(event) {
             event.preventDefault();
             
@@ -414,6 +440,11 @@
                 request.onerror = function(event) {
                     alert("Erro ao salvar o vídeo no navegador: " + event.target.error);
                 };
+            } else {
+                const inputLink = document.getElementById('linkVideo');
+                if (inputLink && inputLink.value) {
+                    processarLinkExterno(inputLink.value);
+                }
             }
         }
     
@@ -421,6 +452,7 @@
         function carregarVideosLocais() {
             if (!db) return;
             const gradeSeries = document.querySelector('.grade-series');
+            if (!gradeSeries) return;
             
             const transacao = db.transaction(["videos"], "readonly");
             const store = transacao.objectStore("videos");
