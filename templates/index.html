@@ -455,5 +455,48 @@
             }, TEMPO_EXIBICAO);
         }
     </script>
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const gradeSeries = document.querySelector('.grade-series');
+        const videosLocais = JSON.parse(localStorage.getItem('pobreflix_locais') || '[]');
+        
+        videosLocais.forEach(video => {
+            const cardHtml = `
+                <div class="bloco-serie" id="local-${video.id}">
+                    <div class="capa-container" style="background: #222; display: flex; align-items: center; justify-content: center; height: 220px;">
+                        <span style="color: #aaa; font-size: 14px; padding: 10px; text-align: center;">📱 ${video.nome} (${video.tamanho})</span>
+                        <button class="btn-deletar-card" onclick="deletarVideoLocal(${video.id})" title="Excluir do Dispositivo">&times;</button>
+                    </div>
+                    <div class="info">
+                        <h3>${video.nome}</h3>
+                        <button onclick="assistirLocal('${video.url}', '${video.nome}')" class="btn-ver" style="background: #e50914; border: none; cursor: pointer;">Assistir Local</button>
+                    </div>
+                </div>
+            `;
+            gradeSeries.insertAdjacentHTML('afterbegin', cardHtml);
+        });
+    });
+    
+    function assistirLocal(urlBlob, titulo) {
+        // Abre uma tela simples de reprodução com o vídeo local selecionado
+        const janelaPlayer = window.open('', '_blank');
+        janelaPlayer.document.write(`
+            <html>
+            <head><title>${titulo} - Pobreflix</title></head>
+            <body style="background:black; margin:0; display:flex; justify-content:center; align-items:center; height:100vh;">
+                <video src="${urlBlob}" controls autoplay style="width:100%; height:100%;"></video>
+            </body>
+            </html>
+        `);
+    }
+    
+    function deetarVideoLocal(id) {
+        if (confirm("Deseja apagar este vídeo do seu painel local?")) {
+            let videosLocais = JSON.parse(localStorage.getItem('pobreflix_locais') || '[]');
+            videosLocais = videosLocais.filter(v => v.id !== id);
+            localStorage.setItem('pobreflix_locais', JSON.stringify(videosLocais));
+            document.getElementById(`local-${id}`).remove();
+        }
+    }
 </body>
 </html>
