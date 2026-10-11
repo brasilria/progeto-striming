@@ -327,16 +327,19 @@
 
     <div id="modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 3000; justify-content: center; align-items: center;">
         <div class="modal-conteudo" style="background: #181818; padding: 30px; border-radius: 8px; width: 100%; max-width: 400px; box-sizing: border-box; border: 1px solid #333;">
-            <h2 style="color: #e50914; margin-top: 0; font-size: 24px;">Adicionar da Galeria</h2>
+            <h2 style="color: #e50914; margin-top: 0; font-size: 24px;">Adicionar Conteúdo</h2>
             
-            <!-- Formulário adaptado para receber o arquivo local -->
             <form id="formAdicionarLocal" onsubmit="salvarVideoLocal(event)">
                 <input type="text" id="nomeVideo" placeholder="Nome do Filme/Vídeo" required style="width: 100%; padding: 12px; margin-bottom: 12px; background: #333; border: none; color: white; border-radius: 4px; box-sizing: border-box;">
                 <textarea id="descVideo" placeholder="Breve descrição..." rows="3" style="width: 100%; padding: 12px; margin-bottom: 12px; background: #333; border: none; color: white; border-radius: 4px; box-sizing: border-box; resize: none;"></textarea>
                 
-                <!-- SELETOR DE ARQUIVO LOCAL -->
-                <label style="color: #aaa; display: block; margin-bottom: 5px; font-size: 14px;">Selecione o vídeo do dispositivo:</label>
-                <input type="file" id="arquivoLocal" accept="video/*" required style="width: 100%; padding: 10px; margin-bottom: 15px; background: #333; border: none; color: white; border-radius: 4px; box-sizing: border-box;">
+                <!-- OPÇÃO 1: ARQUIVO LOCAL DA GALERIA -->
+                <label style="color: #aaa; display: block; margin-bottom: 5px; font-size: 14px;">Ou selecione o vídeo do dispositivo:</label>
+                <input type="file" id="arquivoLocal" accept="video/*" style="width: 100%; padding: 10px; margin-bottom: 12px; background: #333; border: none; color: white; border-radius: 4px; box-sizing: border-box;">
+                
+                <!-- OPÇÃO 2: LINK DO YOUTUBE / ONLINE -->
+                <label style="color: #aaa; display: block; margin-bottom: 5px; font-size: 14px;">Ou cole o link do YouTube/Online:</label>
+                <input type="text" id="linkVideo" placeholder="https://youtube.com/watch?v=..." style="width: 100%; padding: 12px; margin-bottom: 15px; background: #333; border: none; color: white; border-radius: 4px; box-sizing: border-box;">
                 
                 <div style="display: flex; gap: 10px;">
                     <button type="submit" style="flex: 1; padding: 12px; background: #e50914; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Adicionar</button>
