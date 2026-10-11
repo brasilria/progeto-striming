@@ -325,17 +325,18 @@
         </div>
     </main>
 
-    <div id="modal" class="modal">
-        <div class="modal-conteudo">
-            <h2>Adicionar Conteúdo (Archive.org)</h2>
-            <form action="/adicionar" method="POST">
-                <input type="text" name="nome" placeholder="Nome da Série/Filme" required>
-                <textarea name="descricao" placeholder="Breve descrição..." rows="3"></textarea>
-                <input type="text" name="arquivo_nome" placeholder="Nome do arquivo (ex: filme.mp4) ou URL" required>
-                <small style="color: #aaa; display: block; margin-bottom: 15px;">Insira o nome do arquivo hospedado no seu item do Archive.org ou a URL direta do vídeo.</small>
+    <div id="modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 3000; justify-content: center; align-items: center;">
+        <div class="modal-conteudo" style="background: #181818; padding: 30px; border-radius: 8px; width: 100%; max-width: 400px; box-sizing: border-box; border: 1px solid #333;">
+            <h2 style="color: #e50914; margin-top: 0; font-size: 24px;">Adicionar Conteúdo</h2>
+            <form action="/adicionar" method="POST" onsubmit="mostrarCarregamento()">
+                <input type="text" name="nome" placeholder="Nome da Série/Filme" required style="width: 100%; padding: 12px; margin-bottom: 12px; background: #333; border: none; color: white; border-radius: 4px; box-sizing: border-box;">
+                <textarea name="descricao" placeholder="Breve descrição..." rows="3" style="width: 100%; padding: 12px; margin-bottom: 12px; background: #333; border: none; color: white; border-radius: 4px; box-sizing: border-box; resize: none;"></textarea>
+                <input type="text" name="arquivo_nome" placeholder="Nome do arquivo (ex: filme.mp4) ou URL" required style="width: 100%; padding: 12px; margin-bottom: 8px; background: #333; border: none; color: white; border-radius: 4px; box-sizing: border-box;">
+                <small style="color: #aaa; display: block; margin-bottom: 20px; font-size: 12px;">Insira o arquivo do Archive.org ou a URL direta do vídeo.</small>
+                
                 <div style="display: flex; gap: 10px;">
-                    <button type="submit">Salvar</button>
-                    <button type="button" onclick="fecharModal()" style="background: #333;">Sair</button>
+                    <button type="submit" id="btnSalvarModal" style="flex: 1; padding: 12px; background: #e50914; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Salvar</button>
+                    <button type="button" onclick="fecharModal()" style="flex: 1; padding: 12px; background: #333; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">Sair</button>
                 </div>
             </form>
         </div>
@@ -356,6 +357,13 @@
                 menu.classList.remove('aberta');
                 overlay.style.display = 'none';
             }
+        }
+
+        function mostrarCarregamento() {
+            const btn = document.getElementById('btnSalvarModal');
+            btn.innerText = "Salvando...";
+            btn.style.opacity = "0.7";
+            btn.disabled = true;
         }
 
         function deletarConteudoLocal(id) {
